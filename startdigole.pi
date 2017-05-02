@@ -169,7 +169,7 @@ setFGcolor(250)
 myip = get_ip_address("wlan0")
 printText(30,120,myip)
 #retry 5 times to display IP
-for i in range(5):
+for i in range(50):
 	if set(myip) != set("error"):
 		break
 	time.sleep(5)
