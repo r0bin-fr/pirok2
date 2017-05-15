@@ -3,10 +3,17 @@
 import spidev #bibliotheque SPI
 import time # pour tempo 1s
 import numpy as np #bit and hex management
-import random
+import random #for demo
+
+#for data input
+import sys
+from select import select
+
 
 # Parametres font / couleur
-cBlanc = 254
+cNoir = 0#4 #254
+cBlanc = 222 #254 #4
+cB1=cB2=cB3=63
 cBleu = 0x32 #2
 cRouge = 0xC4 #224
 cVert = 28
@@ -14,8 +21,6 @@ fBig=200
 fSmall=201
 
 
-# Image Perroquet full color
-fp = open('pirok6.digole')
 
 bigfont = [
 0x00,0x1b,0x2c,0x00,0x00,0x2c,0x04,0xbc,0x00,0x00,0x00,0x46,0x00,0x00,0x00,0x2c
@@ -173,7 +178,7 @@ smallfont = [
 # Activation du bus SPI
 spi = spidev.SpiDev() #nouvel objet SPI
 spi.open(0,0) # sur port SPI 0 CS 0
-spi.max_speed_hz = 15000000 #200000 #15000000 # vitesse = 200 KHz pour le digole (max 15000000)
+spi.max_speed_hz = 1000000 #200000 #15000000 # vitesse = 200 KHz pour le digole (max 15000000)
 spi.bits_per_word = 8 #8 bits per word
 spi.lsbfirst = False #MSB bits
 spi.mode = 0 #mode SPI O
@@ -321,6 +326,10 @@ def setFGcolor(c):
         sendCmd("SC")
         sendVal(c)
 
+def setFGcolorTrue(a,b,c):
+	sendCmd("ESC")
+	sendVals([a,b,c])
+
 #- change la couleur du background
 def setBGcolor():
         sendCmd("BGC")
@@ -385,8 +394,19 @@ def downloadFont(myfont,fontnum):
 #downloadFont(smallfont,fSmall)
 #downloadFont(bigfont,fBig)
 #exit()
+#0 = noir
+#1 = blanc
 
+setFGcolor(cNoir)
+setBGcolor()
 clearScreen()
+
+setDrawMode("C")
+
+whiteVals=[77,81,113,117,141,149,181,213,245,249,250,1]
+colc=0
+cold=0
+
 wval=0
 while 1:
 	#temp chaudiere	
@@ -394,6 +414,7 @@ while 1:
 	setFGcolor(cRouge)
 	printTextP(5,20,"c")
 	setFGcolor(cBlanc)
+#	setFGcolorTrue(cB1,cB2,cB3)
 	st=random.randint(115, 124)
 	printText(str(st)+"+   ")
 
@@ -401,6 +422,7 @@ while 1:
 	setFGcolor(cVert)
 	printTextP(89,20,"d")	
 	setFGcolor(cBlanc)
+#	setFGcolorTrue(cB1,cB2,cB3)
 	printTextP(116,20,"     ")
 	printText2(0,1," ")
 	st="{0:.1f}".format(random.uniform(5, 10))
@@ -417,61 +439,42 @@ while 1:
 
 	#temperature
 	setFGcolor(cBlanc)
+#	setFGcolorTrue(cB1,cB2,cB3)
 	st="{0:.1f}".format(random.uniform(92, 95))
 	printTextP(50,80,str(st)+"+ ")
 
 	#temperature ambiante et hygrometrie
+	setFGcolor(254)
 	setFont(fSmall)
 	printText2(4,6,"23+ / 40a")
 	
-	time.sleep(0.7)
-
-exit()
-
-downloadFont(bigfont,fBig)
-clearScreen()
-setFGcolor(254)
-setFont(fBig)
-printText2(0,1,"1'2,3 45")
-printText2(0,2,"657.90+")
-setFGcolor(3)
-printTextP(0,160,"ABCDEF")
-
-exit()
-
-downloadFont(smallfont,fSmall)
-
-clearScreen()
-setFGcolor(254)
-setFont(fSmall)
-printText2(0,1,"1'2,3 45")
-printText2(0,2,"657.90+ab")
-
-setFGcolor(224) 
-printText2(0,3,"c")
-
-setFGcolor(28)
-printText2(0,4,"d")
-
-exit()
-
-setFont(200)
-#printText2(0,1,"12,3 45")
-#printText2(0,2,"678.90+")
-#printTextP(50,80,"92,1+")
-ptextold = ""
-setDrawMode('C')
-#setDrawMode('O')
-while 0: 
-	for i in range(10):
-		for j in range(10):
-			ptext = "9"+str(i)+"."+str(j)+" "
-			#if(len(ptextold) > 1):
-			#	setFGcolor(0)
-			#	printTextP(50,80,ptextold)
-			#	setFGcolor(254)
-
-			printTextP(50,80,ptext)
-			ptextold = ptext
-			time.sleep(0.5)
-			
+	#time.sleep(0.7)
+	
+	#get user entry	
+	rlist, _, _ = select([sys.stdin], [], [], 1)
+	if rlist:
+    		s = sys.stdin.readline()
+		try:
+#			cB1,cB2,cB3 = s.split(",")
+#			cB1=int(cB1)
+#			cB2=int(cB2)
+#			cB3=int(cB3)
+			cBlanc=int(s)
+		except ValueError:
+			print "NaN"
+			cBlanc =cBlanc+2
+    		print "Entered:",s,"cBlanc=",cBlanc
+#    		print "Entered:",s,"cB1=",cB1,"cB2=",cB2,"cB3=",cB3
+		clearScreen()
+	#white color swap
+	#if(colc %2):
+	#	clearScreen()
+	#	cBlanc = whiteVals[cold]
+	#	if(cBlanc%2):
+	#		cBlanc = cBlanc-1
+	#	print "color=", cBlanc
+	#	cold=cold+1
+	#	if(cold >= len(whiteVals)):
+	#		cold=0
+	#colc=colc+1	
+	#cBlanc = 76
