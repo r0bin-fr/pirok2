@@ -362,6 +362,23 @@ def downloadFont(myfont,fontnum):
 #---------------------
 #------ MAIN ---------
 #---------------------
-setWelcomeScreen(welcomelogo)
 
-			
+#setWelcomeScreen(welcomelogo)
+
+#0 = noir
+#1 = blanc
+
+
+setFGcolor(0)
+setBGcolor()
+setFGcolor(1)			
+clearScreen()
+
+#send commands
+sendCmd("DIM")
+sendVal(25)
+sendVal(0)
+sendVal(110)
+sendVal(120)
+sendVals(welcomelogo)
+
