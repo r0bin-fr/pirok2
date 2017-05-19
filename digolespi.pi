@@ -9,7 +9,7 @@ import time # pour tempo 1s
 # Activation du bus SPI
 spi = spidev.SpiDev() #nouvel objet SPI
 spi.open(0,0) # sur port SPI 0 CS 0
-spi.max_speed_hz = 200000 # vitesse = 200 KHz pour le digole (max 15000000)
+spi.max_speed_hz = 1000000 # vitesse = 200 KHz pour le digole (max 15000000)
 spi.bits_per_word = 8 #8 bits per word
 spi.lsbfirst = False #MSB bits
 spi.mode = 0 #mode SPI O
@@ -41,6 +41,11 @@ def printText(txt):
 #- Affiche un texte a l'ecran (avec position)
 def printText(x,y,txt):
 	setCursor(x,y)
+	sendCmd("TT")
+	sendCmd(txt)
+	sendVal(0)
+def printTextP(x,y,txt):
+	setCursorP(x,y)
 	sendCmd("TT")
 	sendCmd(txt)
 	sendVal(0)
@@ -129,6 +134,10 @@ def setDrawMode(m):
         sendCmd("DM")
         sendCmd(m)
 	
+#- scroll une partie de l ecran
+def scroll(x,y,w,h,Ox,Oy):
+	sendCmd("MA")
+	sendVals([x,y,w,h,Ox,Oy])
 
 #---------------------
 #------ MAIN ---------
@@ -163,24 +172,40 @@ def setDrawMode(m):
 #clearScreen()
 #drawPic(0,0,160,128,imgpirok)
 
-setScreen(1)
+
+
+#Print color tiles
+if 0:
+	clearScreen()
+	setFGcolor(0)
+	setBGcolor()
+	
+	#clearScreen()
+	#setFGcolor(8)
+	#fillRect(0,0,159,127)
+
+	for i in range(256):
+		clearScreen()
+		setFGcolor(i)	
+		fillRect(32,32,128,128)
+		setFGcolor(1)
+		printTextP(32,20,str(i))
+		time.sleep(1)
+	exit()
+
+
+#Print 8x8 color tiles
 clearScreen()
+setFGcolor(0)
+setBGcolor()
+clearScreen()
+
 col = 0
 for j in range (128/8):
-	for i in range(160/8):
-		#if(col < 256):
-#			setFGcolor(col)
-#		if(col % 2):
-#			setFGcolor(0xE0)
-#		else:
-#			setFGcolor(0x03)
-			
-		setFGcolor(col)
-	
-		fillRect(i*8,j*8,((i*8)+8)-1,((j*8)+8)-1)
-#		setFGcolor(0)
-#		printText(0,0,str(col))
-		col = col +1
-#		time.sleep(0.1)
-
+        for i in range(160/8):
+                setFGcolor(col)
+                fillRect(i*8,j*8,((i*8)+8)-1,((j*8)+8)-1)
+                col = col +1
+                if(col >= 256):
+                        col=0
 
