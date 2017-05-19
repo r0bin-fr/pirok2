@@ -32,6 +32,9 @@ class DigoleMaster:
 		self.spi.bits_per_word = 8 #8 bits per word
 		self.spi.lsbfirst = False #MSB bits
 		self.spi.mode = 0 #mode SPI O
+		#put screen on
+		self.setScreen(1)
+				
 
 	#- Envoie une commande (string)
 	def sendCmd(self,buf):
@@ -188,24 +191,39 @@ class DigoleMaster:
 	        self.sendCmd(m)
 	
 	#- change l'ecran d'accueil
-	def setWelcomeScreen1(self):
+	def setWelcomeScreen(self,bitm):
 		self.sendCmd("SSS")
-		bitm = fp.read()
-		print "len=",len(bitm)
-		self.sendVals([0x9C, 0x06])
+		#compute bmp length
+		fl=len(bitm)+9
+		print "len+9=",fl
+		fl1,fl2=self.convert(fl)
+		print "len conv=",hex(fl1),"-",hex(fl2)
+		f2=fl+2
+		f21,f22=self.convert(f2)
+		print "len conv2=",hex(f21),"-",hex(f22)
+
+		#send first size
+		self.sendVals([f22,f21])
 		time.sleep(0.300)
-		self.sendVals([0x06, 0x9A])
-		#commandes sup:
-		
-		#avant:
+		#send second size
+		self.sendVals([fl1,fl2])	
+		#send commands
 		self.sendCmd("CLDIM")
 		self.sendVal(25)
 		self.sendVal(0)
 		self.sendVal(110)
 		self.sendVal(120)
+		#send bitmap
 		self.sendCmd2Flash(bitm,11)
 		time.sleep(0.300)
 		self.sendVal(255)
+		
+		#sleep 3 seconds
+		time.sleep(3)
+		#verify
+		self.sendCmd("DSS")	
+		self.sendVal(255)	
+
 
 	#convert 16bit integer to two 8bit integers
 	def convert(self,int32_val):
