@@ -14,7 +14,6 @@ from select import select
 # Class to handle the Digole OLED screen
 #
 class DigoleMaster:
-
 	# Parametres font / couleur
 	cNoir = 0#4 #254
 	cBlanc = 222 #254 #4
@@ -27,22 +26,22 @@ class DigoleMaster:
 
 	def __init__(self):
 		# Activation du bus SPI
-		spi = spidev.SpiDev() #nouvel objet SPI
-		spi.open(0,0) # sur port SPI 0 CS 0
-		spi.max_speed_hz = 1000000 #200000 #15000000 # vitesse = 200 KHz pour le digole (max 15000000)
-		spi.bits_per_word = 8 #8 bits per word
-		spi.lsbfirst = False #MSB bits
-		spi.mode = 0 #mode SPI O
+		self.spi = spidev.SpiDev() #nouvel objet SPI
+		self.spi.open(0,0) # sur port SPI 0 CS 0
+		self.spi.max_speed_hz = 1000000 #200000 #15000000 # vitesse = 200 KHz pour le digole (max 15000000)
+		self.spi.bits_per_word = 8 #8 bits per word
+		self.spi.lsbfirst = False #MSB bits
+		self.spi.mode = 0 #mode SPI O
 
 	#- Envoie une commande (string)
-	def sendCmd(buf):
+	def sendCmd(self,buf):
 		for c in buf:
-			spi.writebytes([ord(c)])
+			self.spi.writebytes([ord(c)])
 
-	def sendCmd2Flash(buf,decal):
+	def sendCmd2Flash(self,buf,decal):
 		a = decal + 1
 		for c in buf:
-			spi.writebytes([c])
+			self.spi.writebytes([c])
 			if(a >= 64):
 				time.sleep(0.15)
 				a = 1
@@ -50,187 +49,191 @@ class DigoleMaster:
 				a = a+1
 
 	#- Envoie une commande (valeur)
-	def sendVal(val):
-		spi.writebytes([val])
+	def sendVal(self,val):
+		self.spi.writebytes([val])
 
 	#- Envoie plusieurs valeurs
-	def sendVals(val):
+	def sendVals(self,val):
 		for v in val:
-			spi.writebytes([v])
+			self.spi.writebytes([v])
 
 	#- Efface l'ecran		
-	def clearScreen():
-		sendCmd("CL")
+	def clearScreen(self):
+		self.sendCmd("CL")
 
 	#- Affiche un texte a l'ecran
-	def printText(txt):
-		sendCmd("TT")
-		sendCmd(txt)
-		sendVal(0)
+	def printText(self,txt):
+		self.sendCmd("TT")
+		self.sendCmd(txt)
+		self.sendVal(0)
 
 	#- Affiche un texte a l'ecran (avec position)
-	def printText2(x,y,txt):
-		setCursor(x,y)
-		sendCmd("TT")
-		sendCmd(txt)
-		sendVal(0)
+	def printText2(self,x,y,txt):
+		self.setCursor(x,y)
+		self.sendCmd("TT")
+		self.sendCmd(txt)
+		self.sendVal(0)
 
 	#- Affiche un texte a l'ecran (avec position)
-	def printTextP(x,y,txt):
-		setCursorP(x,y)
-		sendCmd("TT")
-		sendCmd(txt)
-		sendVal(0)
+	def printTextP(self,x,y,txt):
+		self.setCursorP(x,y)
+		self.sendCmd("TT")
+		self.sendCmd(txt)
+		self.sendVal(0)
 
 	#- Change le curseur (position)
-	def setCursor(x,y):
-	        sendCmd("TP")
-	        sendVal(x)
-	        sendVal(y)
+	def setCursor(self,x,y):
+	        self.sendCmd("TP")
+	        self.sendVal(x)
+	        self.sendVal(y)
 
 	#- Change le curseur (pixels)
-	def setCursorP(x,y):
-	        sendCmd("ETP")
-	        sendVal(x)
-	        sendVal(y)
+	def setCursorP(self,x,y):
+	        self.sendCmd("ETP")
+	        self.sendVal(x)
+	        self.sendVal(y)
 
-	def setCursorLastPos():
-		sendCmd("ETB")
+	def setCursorLastPos(self):
+		self.sendCmd("ETB")
 
 	#- Dessine un pixel
-	def drawPixel(x,y):
-	        sendCmd("DP")	
-	        sendVal(x)
-	        sendVal(y)
+	def drawPixel(self,x,y):
+	        self.sendCmd("DP")	
+	        self.sendVal(x)
+	        self.sendVal(y)
 
 	#- Dessine une ligne
-	def drawLine(x,y,x2,y2):
-	        sendCmd("LN")	
-	        sendVal(x)
-        	sendVal(y)
-        	sendVal(x2)
-        	sendVal(y2)
+	def drawLine(self,x,y,x2,y2):
+	        self.sendCmd("LN")	
+	        self.sendVal(x)
+        	self.sendVal(y)
+        	self.sendVal(x2)
+        	self.sendVal(y2)
 
 	#- Dessine un carre
-	def drawRect(x,y,x2,y2):
-	        sendCmd("DR")
-	        sendVal(x)
-	        sendVal(y)
-	        sendVal(x2)
-	        sendVal(y2)
+	def drawRect(self,x,y,x2,y2):
+	        self.sendCmd("DR")
+	        self.sendVal(x)
+	        self.sendVal(y)
+	        self.sendVal(x2)
+	        self.sendVal(y2)
 
 	#- Remplit un carre
-	def fillRect(x,y,x2,y2):
-	        sendCmd("FR")
-	        sendVal(x)
-	        sendVal(y)
-	        sendVal(x2)
-	        sendVal(y2)
+	def fillRect(self,x,y,x2,y2):
+	        self.sendCmd("FR")
+	        self.sendVal(x)
+	        self.sendVal(y)
+	        self.sendVal(x2)
+	        self.sendVal(y2)
 
 	#- Dessine ou remplit un cercle
-	def drawCircle(x,y,r,f):
-	        sendCmd("CC")
-	        sendVal(x)
-	        sendVal(y)
-	        sendVal(r)
-	        sendVal(f)
+	def drawCircle(self,x,y,r,f):
+	        self.sendCmd("CC")
+	        self.sendVal(x)
+	        self.sendVal(y)
+	        self.sendVal(r)
+	        self.sendVal(f)
 
 	#- Affiche une image noir et blanc
-	def drawPic(x,y,w,h,data):
-	        sendCmd("DIM")
-	        sendVal(x)
-	        sendVal(y)
-	        sendVal(w)
-	        sendVal(h)
-	        sendVals(data)
+	def drawPic(self,x,y,w,h,data):
+	        self.sendCmd("DIM")
+	        self.sendVal(x)
+	        self.sendVal(y)
+	        self.sendVal(w)
+	        self.sendVal(h)
+	        self.sendVals(data)
 	
 	#- Affiche une image NB prise d'un fichier
-	def drawPic2(x,y,w,h,data):
-       		sendCmd("DIM")
-        	sendVal(x)
-        	sendVal(y)
-        	sendVal(w)
-        	sendVal(h)
-        	sendCmd(data)
+	def drawPic2(self,x,y,w,h,data):
+       		self.sendCmd("DIM")
+        	self.sendVal(x)
+        	self.sendVal(y)
+        	self.sendVal(w)
+        	self.sendVal(h)
+        	self.sendCmd(data)
 	#Affiche une image couleur prise d'un fichier
-	def drawPic3(x,y,w,h,data):
-	        sendCmd("EDIM1")
-	        sendVal(x)
-	        sendVal(y)
-	        sendVal(w)
-	        sendVal(h)
-	        sendCmd(data)
+	def drawPic3(self,x,y,w,h,data):
+	        self.sendCmd("EDIM1")
+	        self.sendVal(x)
+	        self.sendVal(y)
+	        self.sendVal(w)
+	        self.sendVal(h)
+	        self.sendCmd(data)
 
 	#- Change la font
-	def setFont(f):
-        	sendCmd("SF")
-        	sendVal(f)
+	def setFont(self,f):
+        	self.sendCmd("SF")
+        	self.sendVal(f)
 
 	#- allume ou eteint l'ecran
-	def setScreen(on):
-        	sendCmd("SOO")
-        	sendVal(on)
+	def setScreen(self,on):
+        	self.sendCmd("SOO")
+        	self.sendVal(on)
 
 	#- change la couleur de dessin
-	def setFGcolor(c):
-        	sendCmd("SC")
-        	sendVal(c)
-	def setFGcolorTrue(a,b,c):
-		sendCmd("ESC")
-		sendVals([a,b,c])
+	def setFGcolor(self,c):
+        	self.sendCmd("SC")
+        	self.sendVal(c)
+	def setFGcolorTrue(self,a,b,c):
+		self.sendCmd("ESC")
+		self.sendVals([a,b,c])
 
 	#- change la couleur du background
-	def setBGcolor():
-        	sendCmd("BGC")
+	def setBGcolor(self):
+        	self.sendCmd("BGC")
 
 	#- change la couleur de dessin
-	def setDrawMode(m):
-	        sendCmd("DM")
-	        sendCmd(m)
+	def setDrawMode(self,m):
+	        self.sendCmd("DM")
+	        self.sendCmd(m)
 	
 	#- change l'ecran d'accueil
-	def setWelcomeScreen1():
-		sendCmd("SSS")
+	def setWelcomeScreen1(self):
+		self.sendCmd("SSS")
 		bitm = fp.read()
 		print "len=",len(bitm)
-		sendVals([0x9C, 0x06])
+		self.sendVals([0x9C, 0x06])
 		time.sleep(0.300)
-		sendVals([0x06, 0x9A])
+		self.sendVals([0x06, 0x9A])
 		#commandes sup:
 		
 		#avant:
-		sendCmd("CLDIM")
-		sendVal(25)
-		sendVal(0)
-		sendVal(110)
-		sendVal(120)
-		sendCmd2Flash(bitm,11)
+		self.sendCmd("CLDIM")
+		self.sendVal(25)
+		self.sendVal(0)
+		self.sendVal(110)
+		self.sendVal(120)
+		self.sendCmd2Flash(bitm,11)
 		time.sleep(0.300)
-		sendVal(255)
+		self.sendVal(255)
 
 	#convert 16bit integer to two 8bit integers
-	def convert(int32_val):
+	def convert(self,int32_val):
     		bin = np.binary_repr(int32_val, width = 32) 
     		int8_arr = [int(bin[0:8],2), int(bin[8:16],2), int(bin[16:24],2), int(bin[24:32],2)]
     		return int8_arr[2],int8_arr[3] 
 
-	def downloadFont(myfont,fontnum):
-		clearScreen()
+	#download a font
+	def downloadFont(self,myfont,fontnum):
+		self.clearScreen()
 		#compute font lenght
 		fl=len(myfont)
 		print "len=",fl
-		fl1,fl2=convert(fl)
+		fl1,fl2=self.convert(fl)
 		print "len conv=",hex(fl1),"-",hex(fl2)
 		#send command
-		sendCmd("SUF")
+		self.sendCmd("SUF")
 		#custom font number
-		sendVal(fontnum)
+		self.sendVal(fontnum)
 		time.sleep(0.300)
 		#send length
-		sendVals([fl2,fl1])
+		self.sendVals([fl2,fl1])
 		#send font data to flash
-		sendCmd2Flash(myfont,0)
+		self.sendCmd2Flash(myfont,0)
 		#sleep at least 3 seconds after flash
 		time.sleep(3)
-
+	
+	#close connection
+	def close(self):
+		self.spi.close()
 
