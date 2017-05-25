@@ -1,6 +1,7 @@
 #----------------------------------------------------------------------
 # rotary_encoder.py from https://github.com/guyc/py-gaugette
 # Guy Carpenter, Clearwater Software
+# Updated by r0bin - using RPi GPIO lib & adding switch feature
 #
 # This is a class for reading quadrature rotary encoders
 # like the PEC11 Series available from Adafruit:
