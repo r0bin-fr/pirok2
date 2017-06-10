@@ -10,16 +10,25 @@ from subprocess import call
 import mydigole
 import myencoder
 import random
+import readMaxim
+import readHSR
+import multithreadHum
+import multithreadRange
+import multithreadADC
 
 #Temperature file backup
 TEMPBACKUP = '/home/pi/pirock/settings.txt'
 DEFAULT_BOILER_TEMP = 115
-BOOST_BOILER_TEMP	= 124
+BOOST_BOILER_TEMP   = 124
 SCREEN_UPDATE_TIME  = 0.5  #500ms
 #Encoder
 A_PIN = 5
 B_PIN = 6
-SW_PIN= 13
+SW_PIN= 26
+TOUCH_PIN= 12
+#water gauge value
+WG_RANGE_MIN = 224.0
+WG_RANGE_MAX = 50.0
 
 #Parametres font / couleur
 cNoir = 0#4 #254
@@ -31,11 +40,24 @@ cVert = 28
 fBig=200
 fSmall=201
 
+#global values
+dhtData = readMaxim.MaximData(0)
+hsrData = readHSR.HSRData(0)
+barData = readHSR.HSRData(0)
+
+#tasks
+task4 = multithreadHum.TaskPrintHum(3,dhtData)
+task5 = multithreadRange.TaskPrintRange(4,hsrData)
+task9 = multithreadADC.TaskPrintBar(8,barData)
+
 #how to quit application nicely
 def quitApplicationNicely():
 	done = True
 	saveSettings()
 	digole.setScreen(0)
+	task4.stop()
+	task5.stop()
+	task9.stop()
 	time.sleep(0.1)
     	sys.exit(0)
 
@@ -98,10 +120,20 @@ def saveSettings():
         except:
                 print "Erreur fichier ", TEMPBACKUP," (ouverture, lecture ou fermeture)", sys.exc_info()[0]
 
+#translate water range into value to display
+def getWLvalue(range):
+	if(range > WG_RANGE_MIN):
+		range = WG_RANGE_MIN
+	if(range < WG_RANGE_MAX):
+		range = WG_RANGE_MAX
+	
+	rpercent = 1.0 - ((range - WG_RANGE_MAX) / (WG_RANGE_MIN-WG_RANGE_MAX))
+#	print "Range = ",rpercent * 100,"% -val=",int(rpercent * 6)
+	return int(rpercent * 6)
+
+
 #update the screen
-wval=0
-def digole_update():
-	global wval
+def digole_update(temp,hum,range,bar):
     	#display the current time
     	if(int(time.time())%2 == 0):    
 		stime=time.strftime('%H:%M')
@@ -123,16 +155,14 @@ def digole_update():
 	digole.setFGcolor(cBlanc)
 	digole.printTextP(116,20,"     ")
 	digole.printText2(0,1," ")
-	st="{0:.1f}".format(random.uniform(5, 10))
+	#st="{0:.1f}".format(random.uniform(5, 10))
+	st="{0:.1f}".format(bar)
 	digole.printTextP(118,20,str(st)+"b")
 	
 	#niveau eau
 	digole.setFont(fBig)
 	digole.setFGcolor(cBleu)
-	digole.printTextP(30,80,chr(ord('A')+wval))
-	wval = wval + 1
-	if(wval >= 6):
-		wval = 0
+	digole.printTextP(30,80,chr(ord('A')+getWLvalue(range)))
 
 	#temperature
 	digole.setFGcolor(cBlanc)
@@ -142,8 +172,11 @@ def digole_update():
 	#temperature ambiante et hygrometrie
 	digole.setFGcolor(cBlanc)
 	digole.setFont(fSmall)
-	digole.printText2(4,6,"23+ / 40a")
-	
+#	digole.printText2(4,6,"23+ / 40a")
+#	digole.printText2(4,6,st)
+	st="{0:.1f}+/{1:.1f}a".format(temp,hum)
+	digole.printText2(3,6,st)
+
 	
 			
 # -------- Main Program Loop -----------
@@ -163,14 +196,31 @@ digole.clearScreen()
 
 #encoder init
 encoder_val = temptarget
-encoder = myencoder.RotaryEncoder(A_PIN, B_PIN, SW_PIN)
+encoder = myencoder.RotaryEncoder(A_PIN, B_PIN, SW_PIN, TOUCH_PIN)
 encoder.start()
 
+#start multitasking
+task4.start()
+task5.start()
+task9.start()
+
+flagTouch=1
+#infinite loop
 while not done:
 	#try to respect as much as possible the time slot
     	timestamp = time.time()
 	
-	#get sitch update
+	#get touch update
+        if encoder.get_bTouched():
+        	print "Touche!"
+		if flagTouch:
+			digole.setScreen(0)
+			flagTouch=0
+		else:
+			digole.setScreen(1)
+                        flagTouch=1		
+
+	#get switch update
     	if encoder.get_bPushed():
         	print "switch on!"
 		#were we already in boost mode?
@@ -191,8 +241,14 @@ while not done:
 			temptarget += delta
 			print "new temp target=", temptarget
 		
+
+	#get values update
+	t4,h4 = dhtData.getTempHum()
+	r5 = hsrData.getRange()
+	b9 = barData.getRange()
+#	print "Temp=",t4," Humidity=",h4," Range=",r5
 	#update the screen
-	digole_update()
+	digole_update(t4,h4,r5,b9)
     
     	#only sleep the time we need to respect the clock
     	remainingTimeToSleep = time.time() - timestamp
