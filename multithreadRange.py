@@ -33,8 +33,9 @@ class TaskPrintRange(threading.Thread):
 		#apres x lectures, faire la moyenne
 		mrange = self.buffer / NB_READ_RANGE
 		self.mData.setRange(mrange)
+#		print "mrange=",mrange
 		self.buffer = 0.0
-		self._stopevent.wait(0.8) 
+		self._stopevent.wait(0.5) 
 
     def stop(self): 
 	print "stopping thread no", self.taskid
