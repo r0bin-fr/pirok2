@@ -36,16 +36,19 @@ class RotaryEncoder:
     # Pass the wiring pin numbers here.  See:
     #  https://projects.drogon.net/raspberry-pi/wiringpi2/pins/
     #----------------------------------------------------------------------
-    def __init__(self, a_pin, b_pin, sw_pin):
+    def __init__(self, a_pin, b_pin, sw_pin, touch_pin):
         self.a_pin = a_pin
         self.b_pin = b_pin
 	self.sw_pin = sw_pin
+	self.t_pin = touch_pin
 	self.bPush = False
+	self.bTouch = False
 
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setup(a_pin, GPIO.IN)
 	GPIO.setup(b_pin, GPIO.IN)
 	GPIO.setup(sw_pin, GPIO.IN)
+	GPIO.setup(touch_pin, GPIO.IN)
 
         self.steps = 0
         self.last_delta = 0
@@ -119,6 +122,16 @@ class RotaryEncoder:
 	else:
 		return False
 
+    def updateTouch(self):
+        self.bTouch = True
+
+    def get_bTouched(self):
+        if(self.bTouch):
+                self.bTouch = False
+                return True
+        else:
+                return False
+
     # get_cycles returns a scaled down step count to match (for example)
     # the detents on an encoder switch.  If you have 4 delta steps between
     # each detent, and you want to count only full detent steps, use
@@ -142,6 +155,8 @@ class RotaryEncoder:
             self.update()
 	def isr2(arg):
 		self.updatePush()
+	def isr3(arg):
+		self.updateTouch()
         #self.gpio.trigger(self.a_pin, self.gpio.EDGE_BOTH, isr)
         #self.gpio.trigger(self.b_pin, self.gpio.EDGE_BOTH, isr)
 	GPIO.add_event_detect(self.a_pin,GPIO.BOTH)
@@ -150,6 +165,8 @@ class RotaryEncoder:
 	GPIO.add_event_callback(self.b_pin,isr)
 	GPIO.add_event_detect(self.sw_pin,GPIO.FALLING)
 	GPIO.add_event_callback(self.sw_pin,isr2)
+	GPIO.add_event_detect(self.t_pin,GPIO.RISING)
+	GPIO.add_event_callback(self.t_pin,isr3)
 
 
     class Worker(threading.Thread):
