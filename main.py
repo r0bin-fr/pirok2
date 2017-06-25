@@ -15,12 +15,14 @@ import readHSR
 import multithreadHum
 import multithreadRange
 import multithreadADC
+import multithreadTemp
 
 #Temperature file backup
 TEMPBACKUP = '/home/pi/pirock/settings.txt'
 DEFAULT_BOILER_TEMP = 115
 BOOST_BOILER_TEMP   = 124
 SCREEN_UPDATE_TIME  = 0.5  #500ms
+OLED_TIMEOUT 	    = 10   #in seconds
 #Encoder
 A_PIN = 5
 B_PIN = 6
@@ -41,11 +43,15 @@ fBig=200
 fSmall=201
 
 #global values
+maximT1 = readMaxim.MaximData(0)
+maximT2 = readMaxim.MaximData(0)
 dhtData = readMaxim.MaximData(0)
 hsrData = readHSR.HSRData(0)
 barData = readHSR.HSRData(0)
 
 #tasks
+task1 = multithreadTemp.TaskPrintTemp(0,maximT1)
+task2 = multithreadTemp.TaskPrintTemp(1,maximT2)
 task4 = multithreadHum.TaskPrintHum(3,dhtData)
 task5 = multithreadRange.TaskPrintRange(4,hsrData)
 task9 = multithreadADC.TaskPrintBar(8,barData)
@@ -55,6 +61,8 @@ def quitApplicationNicely():
 	done = True
 	saveSettings()
 	digole.setScreen(0)
+	task1.stop()
+	task2.stop()
 	task4.stop()
 	task5.stop()
 	task9.stop()
@@ -133,7 +141,10 @@ def getWLvalue(range):
 
 
 #update the screen
-def digole_update(temp,hum,range,bar):
+#scpt=0
+def digole_update(tboil,tnez,temp,hum,range,bar):
+#	global scpt
+
     	#display the current time
     	if(int(time.time())%2 == 0):    
 		stime=time.strftime('%H:%M')
@@ -146,18 +157,31 @@ def digole_update(temp,hum,range,bar):
 	digole.printTextP(5,20,"c")
 	if( consigneBoost == 0 ):
 		digole.setFGcolor(cBlanc)
-	st=temptarget
-	digole.printText(str(st)+"+   ")
+	#alternate between target and current temp
+#	if(scpt == 0):
+#		st=temptarget
+#		digole.printText(str(st)+"+   ")		
+#	else:
+#		st="{0:.1f}".format(tboil)
+#		digole.printText(str(st)+"+   ")
+	if tboil > 200:
+		tboil = 199.0
+	if tboil < 0:
+		tboil = 0.0
+	st="{0:.0f}/{1:.0f}+   ".format(tboil, temptarget)
+	digole.printText(st)
+	
 
 	#pression extraction
+	tshiftx=15
 	digole.setFGcolor(cVert)
-	digole.printTextP(89,20,"d")	
+	digole.printTextP(89+tshiftx,20,"d")	
 	digole.setFGcolor(cBlanc)
-	digole.printTextP(116,20,"     ")
+	digole.printTextP(116+tshiftx,20,"     ")
 	digole.printText2(0,1," ")
 	#st="{0:.1f}".format(random.uniform(5, 10))
-	st="{0:.1f}".format(bar)
-	digole.printTextP(118,20,str(st)+"b")
+	st="{0:.0f}".format(bar)
+	digole.printTextP(118+tshiftx,20,str(st)+"b")
 	
 	#niveau eau
 	digole.setFont(fBig)
@@ -166,7 +190,8 @@ def digole_update(temp,hum,range,bar):
 
 	#temperature
 	digole.setFGcolor(cBlanc)
-	st="{0:.1f}".format(random.uniform(92, 95))
+#	st="{0:.1f}".format(random.uniform(92, 95))
+	st="{0:.1f}".format(tnez)
 	digole.printTextP(50,80,str(st)+"+ ")
 
 	#temperature ambiante et hygrometrie
@@ -174,10 +199,13 @@ def digole_update(temp,hum,range,bar):
 	digole.setFont(fSmall)
 #	digole.printText2(4,6,"23+ / 40a")
 #	digole.printText2(4,6,st)
-	st="{0:.1f}+/{1:.1f}a".format(temp,hum)
+	st="{0:.1f}+ / {1:.0f}a".format(temp,hum)
 	digole.printText2(3,6,st)
 
-	
+	#update counter
+#	scpt+=1
+#	if(scpt >=3):
+#		scpt=0	
 			
 # -------- Main Program Loop -----------
 #intercept control c for nice quit
@@ -200,11 +228,14 @@ encoder = myencoder.RotaryEncoder(A_PIN, B_PIN, SW_PIN, TOUCH_PIN)
 encoder.start()
 
 #start multitasking
+task1.start()
+task2.start()
 task4.start()
 task5.start()
 task9.start()
 
 flagTouch=1
+touchTstamp = time.time()
 #infinite loop
 while not done:
 	#try to respect as much as possible the time slot
@@ -219,7 +250,13 @@ while not done:
 		else:
 			digole.setScreen(1)
                         flagTouch=1		
-
+			touchTstamp = timestamp
+	#timeout on screen ON
+	if flagTouch:
+		if (timestamp - touchTstamp) >= OLED_TIMEOUT:
+			digole.setScreen(0)
+                        flagTouch=0
+	
 	#get switch update
     	if encoder.get_bPushed():
         	print "switch on!"
@@ -239,16 +276,20 @@ while not done:
 		print "encoder triggered, delta=", delta
 		if(consigneBoost == 0):
 			temptarget += delta
+			#dont go too far
+			if(temptarget > BOOST_BOILER_TEMP):
+				temptarget=BOOST_BOILER_TEMP
 			print "new temp target=", temptarget
-		
 
 	#get values update
+	t1=maximT1.getTemp()
+	t2=maximT2.getTemp()
 	t4,h4 = dhtData.getTempHum()
 	r5 = hsrData.getRange()
 	b9 = barData.getRange()
 #	print "Temp=",t4," Humidity=",h4," Range=",r5
 	#update the screen
-	digole_update(t4,h4,r5,b9)
+	digole_update(t1,t2,t4,h4,r5,b9)
     
     	#only sleep the time we need to respect the clock
     	remainingTimeToSleep = time.time() - timestamp
