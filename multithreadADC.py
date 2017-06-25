@@ -24,8 +24,11 @@ class TaskPrintBar(threading.Thread):
 	adc = Adafruit_ADS1x15.ADS1015()
 
 	while not self._stopevent.isSet(): 
-    		#read ADC channel 0
-    		valADC = adc.read_adc(0, gain=GAIN)
+    		#read ADC channel 0 three times in order to get an average value
+    		val1 = adc.read_adc(0, gain=GAIN)
+    		val2 = adc.read_adc(0, gain=GAIN)
+    		val3 = adc.read_adc(0, gain=GAIN)
+		valADC = (val1+val2+val3)/3 
 		#convert in volts
 		valADCvolt = (valADC * 6.144) / 2047
 		#convert in bar
