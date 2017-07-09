@@ -16,6 +16,8 @@ import multithreadHum
 import multithreadRange
 import multithreadADC
 import multithreadTemp
+import SSRControl
+import multithreadPID
 
 #Temperature file backup
 TEMPBACKUP = '/home/pi/pirock/settings.txt'
@@ -55,12 +57,17 @@ task2 = multithreadTemp.TaskPrintTemp(1,maximT2)
 task4 = multithreadHum.TaskPrintHum(3,dhtData)
 task5 = multithreadRange.TaskPrintRange(4,hsrData)
 task9 = multithreadADC.TaskPrintBar(8,barData)
+#**** PID setup: *****
+#maximT2 is the group temperature (for boost algorithm), maximT1 is the boiler temp sensor, default target value = 115C
+temptarget=115
+task6PID = multithreadPID.TaskControlPID(6,maximT2,maximT1,temptarget)
 
 #how to quit application nicely
 def quitApplicationNicely():
 	done = True
 	saveSettings()
 	digole.setScreen(0)
+	task6PID.stop()
 	task1.stop()
 	task2.stop()
 	task4.stop()
@@ -102,6 +109,8 @@ def loadSettings():
 	else:
 		temptarget = val	
 		print "Load settings: temptarget value is now ",temptarget,"C"
+	#apply settings immediately
+	task6PID.setTargetTemp(temptarget)
 
 def saveSettings():
 	#recuperation de la consigne reelle
@@ -141,10 +150,7 @@ def getWLvalue(range):
 
 
 #update the screen
-#scpt=0
 def digole_update(tboil,tnez,temp,hum,range,bar):
-#	global scpt
-
     	#display the current time
     	if(int(time.time())%2 == 0):    
 		stime=time.strftime('%H:%M')
@@ -157,13 +163,6 @@ def digole_update(tboil,tnez,temp,hum,range,bar):
 	digole.printTextP(5,20,"c")
 	if( consigneBoost == 0 ):
 		digole.setFGcolor(cBlanc)
-	#alternate between target and current temp
-#	if(scpt == 0):
-#		st=temptarget
-#		digole.printText(str(st)+"+   ")		
-#	else:
-#		st="{0:.1f}".format(tboil)
-#		digole.printText(str(st)+"+   ")
 	if tboil > 200:
 		tboil = 199.0
 	if tboil < 0:
@@ -171,7 +170,6 @@ def digole_update(tboil,tnez,temp,hum,range,bar):
 	st="{0:.0f}/{1:.0f}+   ".format(tboil, temptarget)
 	digole.printText(st)
 	
-
 	#pression extraction
 	tshiftx=15
 	digole.setFGcolor(cVert)
@@ -202,11 +200,19 @@ def digole_update(tboil,tnez,temp,hum,range,bar):
 	st="{0:.1f}+ / {1:.0f}a".format(temp,hum)
 	digole.printText2(3,6,st)
 
-	#update counter
-#	scpt+=1
-#	if(scpt >=3):
-#		scpt=0	
-			
+# screen on with timeout
+def screenOnWithTimeout():
+	global digole,flagTouch,touchTstamp
+	digole.setScreen(1)
+        flagTouch=1
+        touchTstamp = time.time()
+
+#screen off, timeout disabled
+def screenOffNow():
+	global digole,flagTouch
+        digole.setScreen(0)
+        flagTouch=0
+	
 # -------- Main Program Loop -----------
 #intercept control c for nice quit
 signal.signal(signal.SIGINT, signal_handler)
@@ -233,6 +239,7 @@ task2.start()
 task4.start()
 task5.start()
 task9.start()
+task6PID.start()
 
 flagTouch=1
 touchTstamp = time.time()
@@ -245,21 +252,26 @@ while not done:
         if encoder.get_bTouched():
         	print "Touche!"
 		if flagTouch:
-			digole.setScreen(0)
-			flagTouch=0
+			screenOffNow()
+			#digole.setScreen(0)
+			#flagTouch=0
 		else:
-			digole.setScreen(1)
-                        flagTouch=1		
-			touchTstamp = timestamp
+			screenOnWithTimeout()
+#			digole.setScreen(1)
+#                       flagTouch=1		
+#			touchTstamp = timestamp
+
 	#timeout on screen ON
 	if flagTouch:
 		if (timestamp - touchTstamp) >= OLED_TIMEOUT:
-			digole.setScreen(0)
-                        flagTouch=0
+			screenOffNow()
+		#	digole.setScreen(0)
+                #        flagTouch=0
 	
 	#get switch update
     	if encoder.get_bPushed():
         	print "switch on!"
+		screenOnWithTimeout()
 		#were we already in boost mode?
 		if(consigneBoost == 0):
 			lastTargetTemp = temptarget
@@ -268,18 +280,23 @@ while not done:
 		else:
 			temptarget = lastTargetTemp
 			consigneBoost = 0
-			
+		#apply settings immediately
+		task6PID.setTargetTemp(temptarget)
+	
 	#get encoder updates
 	delta = encoder.get_cycles()
 	#did we turn the encoder?
     	if delta!=0:	
 		print "encoder triggered, delta=", delta
+		screenOnWithTimeout()
 		if(consigneBoost == 0):
 			temptarget += delta
 			#dont go too far
 			if(temptarget > BOOST_BOILER_TEMP):
 				temptarget=BOOST_BOILER_TEMP
 			print "new temp target=", temptarget
+			#apply settings immediately
+			task6PID.setTargetTemp(temptarget)
 
 	#get values update
 	t1=maximT1.getTemp()
