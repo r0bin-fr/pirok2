@@ -58,3 +58,6 @@ class HSRData:
 		self.lok.release()
 		return xyz
 
+	def releaseLock(self):
+                self.lok.release()
+

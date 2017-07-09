@@ -74,3 +74,6 @@ class MaximData:
                 self.lok.release()
                 return txy , hxy
 
+        def releaseLock(self):
+		self.lok.release()
+

@@ -177,4 +177,3 @@ for i in range(50):
 	printText(10,120,str(i+2)+":")
 	printText(30,120,myip)
 
-

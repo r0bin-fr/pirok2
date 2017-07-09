@@ -20,7 +20,7 @@ import SSRControl
 import multithreadPID
 
 #Temperature file backup
-TEMPBACKUP = '/home/pi/pirock/settings.txt'
+TEMPBACKUP = '/home/pi/pirok2/settings.txt'
 DEFAULT_BOILER_TEMP = 115
 BOOST_BOILER_TEMP   = 124
 SCREEN_UPDATE_TIME  = 0.5  #500ms
