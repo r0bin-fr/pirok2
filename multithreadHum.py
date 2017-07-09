@@ -24,7 +24,7 @@ class TaskPrintHum(threading.Thread):
 		timestamp = time.time()
 		
 		try:
-			task = subprocess.Popen(['sudo','python','/home/pi/pirock/AdafruitDHT.py','2302','17'],stdout=subprocess.PIPE)
+			task = subprocess.Popen(['sudo','python','/home/pi/pirok2/AdafruitDHT.py','2302','17'],stdout=subprocess.PIPE)
 			t,h = task.stdout.readline().split(' ')
 			temperature = float(t)
 			humidity = float(h)
