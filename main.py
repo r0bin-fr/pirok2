@@ -12,6 +12,7 @@ import myencoder
 import random
 import readMaxim
 import readHSR
+import readFlow
 import multithreadHum
 import multithreadRange
 import multithreadADC
@@ -25,6 +26,7 @@ DEFAULT_BOILER_TEMP = 115
 BOOST_BOILER_TEMP   = 124
 SCREEN_UPDATE_TIME  = 0.5  #500ms
 OLED_TIMEOUT 	    = 10   #in seconds
+
 #Encoder
 A_PIN = 5
 B_PIN = 6
@@ -50,6 +52,7 @@ maximT2 = readMaxim.MaximData(0)
 dhtData = readMaxim.MaximData(0)
 hsrData = readHSR.HSRData(0)
 barData = readHSR.HSRData(0)
+flowData = readFlow.FlowData()
 
 #tasks
 task1 = multithreadTemp.TaskPrintTemp(0,maximT1)
@@ -297,6 +300,12 @@ while not done:
 			print "new temp target=", temptarget
 			#apply settings immediately
 			task6PID.setTargetTemp(temptarget)
+
+	#get flow update
+	fl = flowData.getFlow()
+	if(fl > 0.0):
+		print "flow detected:", fl
+		screenOnWithTimeout()
 
 	#get values update
 	t1=maximT1.getTemp()
