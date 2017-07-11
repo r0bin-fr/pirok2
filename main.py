@@ -214,6 +214,7 @@ def screenOnWithTimeout():
 def screenOffNow():
 	global digole,flagTouch
         digole.setScreen(0)
+        digole.clearScreen()
         flagTouch=0
 	
 # -------- Main Program Loop -----------
