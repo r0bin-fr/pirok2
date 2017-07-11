@@ -25,10 +25,18 @@ class TaskPrintBar(threading.Thread):
 
 	while not self._stopevent.isSet(): 
     		#read ADC channel 0 three times in order to get an average value
-    		val1 = adc.read_adc(0, gain=GAIN)
-    		val2 = adc.read_adc(0, gain=GAIN)
-    		val3 = adc.read_adc(0, gain=GAIN)
-		valADC = (val1+val2+val3)/3 
+		try: 
+    			val1 = adc.read_adc(0, gain=GAIN)
+			self._stopevent.wait(0.01)
+    			val2 = adc.read_adc(0, gain=GAIN)
+			self._stopevent.wait(0.01)
+    			val3 = adc.read_adc(0, gain=GAIN)
+			valADC = (val1+val2+val3)/3 
+		except IOError as e:
+			print "I/O error({0}): {1}".format(e.errno, e.strerror)
+		except:
+    			print "Unexpected error:", sys.exc_info()[0]
+
 		#convert in volts
 		valADCvolt = (valADC * 6.144) / 2047
 		#convert in bar
