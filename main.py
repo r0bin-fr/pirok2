@@ -25,7 +25,10 @@ TEMPBACKUP = '/home/pi/pirok2/settings.txt'
 DEFAULT_BOILER_TEMP = 115
 BOOST_BOILER_TEMP   = 124
 SCREEN_UPDATE_TIME  = 0.5  #500ms
-OLED_TIMEOUT 	    = 10   #in seconds
+OLED_TIMEOUT 	    = 20   #in seconds
+OLED_FADE_TIMEOUT   = 5    #in seconds
+OLED_WHITE_STD	    = 254
+OLED_WHITE_FADE	    = 98 #76
 
 #Encoder
 A_PIN = 5
@@ -38,7 +41,7 @@ WG_RANGE_MAX = 50.0
 
 #Parametres font / couleur
 cNoir = 0#4 #254
-cBlanc = 254 #254 #4
+cBlanc = OLED_WHITE_STD #254 #4
 cB1=cB2=cB3=63
 cBleu = 0x32 #2
 cRouge = 0xC4 #224
@@ -77,6 +80,9 @@ def quitApplicationNicely():
 	task5.stop()
 	task9.stop()
 	time.sleep(0.1)
+#	print "now join task 1"
+#	task1.join()
+	print "now exit"
     	sys.exit(0)
 
 #signal handler
@@ -205,18 +211,20 @@ def digole_update(tboil,tnez,temp,hum,range,bar):
 
 # screen on with timeout
 def screenOnWithTimeout():
-	global digole,flagTouch,touchTstamp
+	global digole,flagTouch,touchTstamp,cBlanc
 	digole.setScreen(1)
         flagTouch=1
         touchTstamp = time.time()
+	cBlanc = OLED_WHITE_STD
 
 #screen off, timeout disabled
 def screenOffNow():
-	global digole,flagTouch
+	global digole,flagTouch,cBlanc
         digole.setScreen(0)
         digole.clearScreen()
         flagTouch=0
-	
+	cBlanc = OLED_WHITE_STD
+
 # -------- Main Program Loop -----------
 #intercept control c for nice quit
 signal.signal(signal.SIGINT, signal_handler)
@@ -256,22 +264,24 @@ while not done:
         if encoder.get_bTouched():
         	print "Touche!"
 		if flagTouch:
-			screenOffNow()
-			#digole.setScreen(0)
-			#flagTouch=0
+			#prevent multi touch: wait 2 seconds before screen off
+			if(timestamp - touchTstamp > 2):
+				screenOffNow()
+			#if touched during fadeoff, power on again
+			if (timestamp - touchTstamp) >= (OLED_TIMEOUT - OLED_FADE_TIMEOUT):
+				screenOnWithTimeout()
 		else:
 			screenOnWithTimeout()
-#			digole.setScreen(1)
-#                       flagTouch=1		
-#			touchTstamp = timestamp
 
 	#timeout on screen ON
 	if flagTouch:
 		if (timestamp - touchTstamp) >= OLED_TIMEOUT:
 			screenOffNow()
-		#	digole.setScreen(0)
-                #        flagTouch=0
-	
+		else:
+			if (timestamp - touchTstamp) >= (OLED_TIMEOUT - OLED_FADE_TIMEOUT):
+				#fade whites
+				cBlanc = OLED_WHITE_FADE
+					
 	#get switch update
     	if encoder.get_bPushed():
         	print "switch on!"
@@ -304,6 +314,7 @@ while not done:
 
 	#get flow update
 	fl = flowData.getFlow()
+	print "flow=",fl
 	if(fl > 0.0):
 		print "flow detected:", fl
 		screenOnWithTimeout()
