@@ -23,11 +23,16 @@ def read_range_raw():
 		return "READ ERROR"
 
 def read_range():
+	cptRead = 0
         lines = read_range_raw()
         while lines[0].strip()[-1:] != '1':
 #		print "lecture hcsr04 echoue: ",lines
             	time.sleep(0.1)
 	    	lines = read_range_raw()
+		if(cptRead > 5):
+			return None
+		cptRead += 1
+
         position_espace = lines[0].find(' ')
        	if position_espace != -1:
             range_string = lines[0][0:position_espace]
@@ -57,7 +62,4 @@ class HSRData:
 		xyz = (self.range + self.lastrange) / 2
 		self.lok.release()
 		return xyz
-
-	def releaseLock(self):
-                self.lok.release()
 

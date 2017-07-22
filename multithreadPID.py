@@ -119,7 +119,6 @@ class TaskControlPID(threading.Thread):
 
     def stop(self): 
 	print "stopping thread no", self.taskid
-	self.lok.release()
         self._stopevent.set( ) 
 
     def getTargetTemp(self):
@@ -148,6 +147,3 @@ class TaskControlPID(threading.Thread):
         self.currentDrive = drive
         self.lok.release()
 
-    def releaseLock(self):
-	self.lok.release()
- 

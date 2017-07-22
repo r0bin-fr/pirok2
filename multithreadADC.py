@@ -26,12 +26,17 @@ class TaskPrintBar(threading.Thread):
 	while not self._stopevent.isSet(): 
     		#read ADC channel 0 three times in order to get an average value
 		try: 
+#			print "start adc"
     			val1 = adc.read_adc(0, gain=GAIN)
-			self._stopevent.wait(0.01)
-    			val2 = adc.read_adc(0, gain=GAIN)
-			self._stopevent.wait(0.01)
-    			val3 = adc.read_adc(0, gain=GAIN)
-			valADC = (val1+val2+val3)/3 
+#			print "val1=",val1
+#			self._stopevent.wait(0.01)
+#    			val2 = adc.read_adc(0, gain=GAIN)
+#			print "val2=",val2
+#			self._stopevent.wait(0.01)
+#    			val3 = adc.read_adc(0, gain=GAIN)
+#			print "val3=",val3
+#			valADC = (val1+val2+val3)/3 
+			valADC = (val1) 
 		except IOError as e:
 			print "I/O error({0}): {1}".format(e.errno, e.strerror)
 		except:
@@ -51,6 +56,5 @@ class TaskPrintBar(threading.Thread):
 
     def stop(self): 
 	print "stopping thread no", self.taskid
-	self.mData.releaseLock()
         self._stopevent.set( ) 
 

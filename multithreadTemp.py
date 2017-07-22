@@ -34,6 +34,5 @@ class TaskPrintTemp(threading.Thread):
 
     def stop(self): 
 	print "stopping thread no", self.taskid
-	self.mData.releaseLock()
         self._stopevent.set( ) 
 
