@@ -22,6 +22,7 @@ class TaskPrintBar(threading.Thread):
 	GAIN = 2/3
 	#init ADC chipset
 	adc = Adafruit_ADS1x15.ADS1015()
+	valADC = 0
 
 	while not self._stopevent.isSet(): 
     		#read ADC channel 0 three times in order to get an average value
@@ -38,6 +39,7 @@ class TaskPrintBar(threading.Thread):
 #			valADC = (val1+val2+val3)/3 
 			valADC = (val1) 
 		except IOError as e:
+			print "ADC read error!"
 			print "I/O error({0}): {1}".format(e.errno, e.strerror)
 		except:
     			print "Unexpected error:", sys.exc_info()[0]

@@ -18,14 +18,13 @@ class TaskPrintRange(threading.Thread):
     	print "thread capteur no", self.taskid, "is readry!"
 	
 	while not self._stopevent.isSet():
-		print "thread range while start" 
 		NB_READ_RANGE = 10
 		#x lectures pour faire une moyenne
 		for i in xrange(NB_READ_RANGE):
 			xyz = readHSR.read_range()
 			if(xyz != None):
 				self.buffer += xyz
-				print "lecture ",i," valeur=",xyz
+				#print "lecture ",i," valeur=",xyz
 			else:
 				print "pas de lecture" 
 				i = i-1
@@ -37,7 +36,7 @@ class TaskPrintRange(threading.Thread):
 
 		#apres x lectures, faire la moyenne
 		mrange = self.buffer / NB_READ_RANGE
-		print "range final=", mrange 			
+#		print "range final=", mrange 			
 		self.mData.setRange(mrange)
 #		print "mrange=",mrange
 		self.buffer = 0.0

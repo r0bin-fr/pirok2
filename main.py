@@ -314,7 +314,7 @@ while not done:
 
 	#get flow update
 	fl = flowData.getFlow()
-	print "flow=",fl
+	#print "flow=",fl
 	if(fl > 0.0):
 		print "flow detected:", fl
 		screenOnWithTimeout()
