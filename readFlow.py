@@ -4,7 +4,7 @@ import time
 import threading
 import sys
 
-device_folder = '/sys/kernel/flow/flow'
+device_file = '/sys/kernel/flow/flow'
 
  
 class FlowData:
