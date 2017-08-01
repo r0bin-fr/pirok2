@@ -25,6 +25,13 @@ def read_temp_raw(no_capteur):
 		return "READ ERROR"
  
 def read_temp(no_capteur):
+	#check if sensor is detected first
+#	print "len devfolder=",len(device_folder," nocapter=",no_capteur
+
+	if(len(device_folder) < no_capteur):
+		print "ERR: capteur [",no_capteur,"] non detecte"
+		return 0.0
+		
         lines = read_temp_raw(no_capteur)
         while lines[0].strip()[-3:] != 'YES':
             time.sleep(0.2)
