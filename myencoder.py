@@ -43,6 +43,9 @@ class RotaryEncoder:
 	self.t_pin = touch_pin
 	self.bPush = False
 	self.bTouch = False
+	self.lokE = threading.Lock()
+	self.lokB = threading.Lock()
+	self.lokT = threading.Lock()
 
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setup(a_pin, GPIO.IN)
@@ -105,31 +108,45 @@ class RotaryEncoder:
 
             self.last_delta = delta
             self.r_seq = r_seq
+	self.lokE.acquire()
         self.steps += delta
+	self.lokE.release()
 
     def get_steps(self):
+	self.lokE.acquire()
         steps = self.steps
         self.steps = 0
+	self.lokE.release()
         return steps
 
     def updatePush(self):
+	self.lokP.acquire()
 	self.bPush = True
+	self.lokP.release()
     
     def get_bPushed(self):
+	self.lokP.acquire()
 	if(self.bPush):
 		self.bPush = False
+		self.lokP.release()
 		return True
 	else:
+		self.lokP.release()
 		return False
 
     def updateTouch(self):
+	self.lokT.acquire()
         self.bTouch = True
+	self.lokT.release()
 
     def get_bTouched(self):
+	self.lokT.acquire()
         if(self.bTouch):
                 self.bTouch = False
+		self.lokT.release()
                 return True
         else:
+		self.lokT.release()
                 return False
 
     # get_cycles returns a scaled down step count to match (for example)
@@ -152,7 +169,7 @@ class RotaryEncoder:
 
     def start(self):
         def isr(arg):
-            self.update()
+            	self.update()
 	def isr2(arg):
 		self.updatePush()
 	def isr3(arg):
