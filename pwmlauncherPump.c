@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define PWCLKDIVIDER	2400
+#define PWCLKDIVIDER	2
 #define PWRANGE  	4000
 
 /*****************************************
@@ -26,7 +26,7 @@ int main (int argc, char *argv[])
   drive = atoi(argv[1]);
   if(drive > 100)
     drive = 100;
-  printf("boiler drive=%d%\n",drive);
+  printf("pump drive=%d%\n",drive);
 
   //init wiringpi
   if (wiringPiSetupGpio() == -1){
@@ -35,7 +35,7 @@ int main (int argc, char *argv[])
   }
 
   //PWM mode
-  pinMode(18,PWM_OUTPUT);
+  pinMode(13,PWM_OUTPUT);
   //PWM "predictive mode"
   pwmSetMode(PWM_MODE_MS); 
 
@@ -43,5 +43,5 @@ int main (int argc, char *argv[])
   pwmSetClock(PWCLKDIVIDER);
   pwmSetRange (PWRANGE) ;
   //setting drive according to the RANGE 
-  pwmWrite (18, (drive * (PWRANGE / 100))); 
+  pwmWrite (13, (drive * (PWRANGE / 100))); 
 }

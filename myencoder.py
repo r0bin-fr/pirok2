@@ -44,14 +44,15 @@ class RotaryEncoder:
 	self.bPush = False
 	self.bTouch = False
 	self.lokE = threading.Lock()
-	self.lokB = threading.Lock()
+	self.lokP = threading.Lock()
 	self.lokT = threading.Lock()
 
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setup(a_pin, GPIO.IN)
 	GPIO.setup(b_pin, GPIO.IN)
 	GPIO.setup(sw_pin, GPIO.IN)
-	GPIO.setup(touch_pin, GPIO.IN)
+	#this one has no pullup
+	GPIO.setup(touch_pin, GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
 
         self.steps = 0
         self.last_delta = 0
@@ -176,14 +177,18 @@ class RotaryEncoder:
 		self.updateTouch()
         #self.gpio.trigger(self.a_pin, self.gpio.EDGE_BOTH, isr)
         #self.gpio.trigger(self.b_pin, self.gpio.EDGE_BOTH, isr)
-	GPIO.add_event_detect(self.a_pin,GPIO.BOTH)
-	GPIO.add_event_callback(self.a_pin,isr)
-	GPIO.add_event_detect(self.b_pin,GPIO.BOTH)
-	GPIO.add_event_callback(self.b_pin,isr)
-	GPIO.add_event_detect(self.sw_pin,GPIO.FALLING)
-	GPIO.add_event_callback(self.sw_pin,isr2)
-	GPIO.add_event_detect(self.t_pin,GPIO.RISING)
-	GPIO.add_event_callback(self.t_pin,isr3)
+#	GPIO.add_event_detect(self.a_pin,GPIO.BOTH)
+#	GPIO.add_event_callback(self.a_pin,isr)
+#	GPIO.add_event_detect(self.b_pin,GPIO.BOTH)
+#	GPIO.add_event_callback(self.b_pin,isr)
+#	GPIO.add_event_detect(self.sw_pin,GPIO.FALLING)
+#	GPIO.add_event_callback(self.sw_pin,isr2)
+#	GPIO.add_event_detect(self.t_pin,GPIO.RISING)
+#	GPIO.add_event_callback(self.t_pin,isr3)
+	GPIO.add_event_detect(self.a_pin,GPIO.BOTH,callback=isr)
+	GPIO.add_event_detect(self.b_pin,GPIO.BOTH,callback=isr)
+	GPIO.add_event_detect(self.sw_pin,GPIO.FALLING,callback=isr2,bouncetime=300)
+	GPIO.add_event_detect(self.t_pin,GPIO.RISING,callback=isr3,bouncetime=300)
 
 
     class Worker(threading.Thread):
@@ -200,6 +205,8 @@ class RotaryEncoder:
             while not self.stopping:
                 self.encoder.update()
                 time.sleep(self.delay)
+	    #cleanup GPIOs after use
+	    GPIO.cleanup()
 
         def stop(self):
             self.stopping = True

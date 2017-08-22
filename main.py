@@ -56,6 +56,7 @@ dhtData = readMaxim.MaximData(0)
 hsrData = readHSR.HSRData(0)
 barData = readHSR.HSRData(0)
 flowData = readFlow.FlowData()
+pumpRate = 100
 
 #tasks
 task1 = multithreadTemp.TaskPrintTemp(0,maximT1)
@@ -253,6 +254,9 @@ task5.start()
 task9.start()
 task6PID.start()
 
+#default pump rate
+SSRControl.setPumpPWM( pumpRate )
+
 flagTouch=1
 touchTstamp = time.time()
 #infinite loop
@@ -302,7 +306,9 @@ while not done:
 	#did we turn the encoder?
     	if delta!=0:	
 		print "encoder triggered, delta=", delta
+		#turn on screen
 		screenOnWithTimeout()
+		#update temp target
 		if(consigneBoost == 0):
 			temptarget += delta
 			#dont go too far
@@ -311,6 +317,14 @@ while not done:
 			print "new temp target=", temptarget
 			#apply settings immediately
 			task6PID.setTargetTemp(temptarget)
+
+		#update pump rate
+		pumpRate += delta
+		if(pumpRate > 100):
+			pumpRate = 100
+		if(pumpRate < 1):
+			pumpRate = 1
+		SSRControl.setPumpPWM( pumpRate )
 
 	#get flow update
 	fl = flowData.getFlow()
