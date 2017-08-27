@@ -188,8 +188,9 @@ def digole_update(tboil,tnez,temp,hum,range,bar):
 	digole.printTextP(116+tshiftx,20,"     ")
 	digole.printText2(0,1," ")
 	#st="{0:.1f}".format(random.uniform(5, 10))
-	st="{0:.0f}".format(bar)
-	digole.printTextP(118+tshiftx,20,str(st)+"b")
+	st="{0:.1f}".format(bar)
+#	digole.printTextP(118+tshiftx,20,str(st)+"b")
+	digole.printTextP(118+tshiftx,20,str(st))
 	
 	#niveau eau
 	digole.setFont(fBig)
@@ -256,6 +257,8 @@ task6PID.start()
 
 #default pump rate
 SSRControl.setPumpPWM( pumpRate )
+isPumpRunning = 0
+pumpTimestamp = 0
 
 flagTouch=1
 touchTstamp = time.time()
@@ -263,7 +266,24 @@ touchTstamp = time.time()
 while not done:
 	#try to respect as much as possible the time slot
     	timestamp = time.time()
-	
+
+	#get flow update
+	fl = flowData.getFlow()
+	#print "flow=",fl
+	if(fl > 0.0):
+		print "flow detected:", fl
+		screenOnWithTimeout()
+		isPumpRunning = 1
+		pumpTimestamp = time.time()
+	else:
+		#allow some time (10s) to play with pump pressure (case when not enough power to trigger flowmeter)
+		if((time.time() - pumpTimestamp) > 10.0):
+			isPumpRunning = 0
+			#make sure we put back the full power after use
+			if(pumpRate < 100):
+				pumpRate = 100
+				SSRControl.setPumpPWM( pumpRate )
+
 	#get touch update
         if encoder.get_bTouched():
         	print "Touche!"
@@ -305,43 +325,41 @@ while not done:
 	delta = encoder.get_cycles()
 	#did we turn the encoder?
     	if delta!=0:	
-		print "encoder triggered, delta=", delta
 		#turn on screen
 		screenOnWithTimeout()
-		#update temp target
-		if(consigneBoost == 0):
-			temptarget += delta
-			#dont go too far
-			if(temptarget > BOOST_BOILER_TEMP):
-				temptarget=BOOST_BOILER_TEMP
-			print "new temp target=", temptarget
-			#apply settings immediately
-			task6PID.setTargetTemp(temptarget)
 
-		#update pump rate
-		pumpRate += delta
-		if(pumpRate > 100):
-			pumpRate = 100
-		if(pumpRate < 1):
-			pumpRate = 1
-		SSRControl.setPumpPWM( pumpRate )
-
-	#get flow update
-	fl = flowData.getFlow()
-	#print "flow=",fl
-	if(fl > 0.0):
-		print "flow detected:", fl
-		screenOnWithTimeout()
+		#only update pump when extracting, and temp when idle
+		if(isPumpRunning):
+			#update pump rate
+			pumpRate += (2*delta)
+			if(pumpRate > 100):
+				pumpRate = 100
+			if(pumpRate < 1):
+				pumpRate = 1
+			SSRControl.setPumpPWM( pumpRate )
+		else:
+			#update temp target
+			if(consigneBoost == 0):
+				temptarget += delta
+				#dont go too far
+				if(temptarget > BOOST_BOILER_TEMP):
+					temptarget=BOOST_BOILER_TEMP
+				#dont go too low
+				if(temptarget < 100):
+					temptarget=100
+				print "new temp target=", temptarget
+				#apply settings immediately
+				task6PID.setTargetTemp(temptarget)
 
 	#get values update
-	t1=maximT1.getTemp()
-	t2=maximT2.getTemp()
+	tboil=maximT1.getTemp()
+	tnez=maximT2.getTemp()
 	t4,h4 = dhtData.getTempHum()
 	r5 = hsrData.getRange()
 	b9 = barData.getRange()
-#	print "Temp=",t4," Humidity=",h4," Range=",r5
 	#update the screen
-	digole_update(t1,t2,t4,h4,r5,b9)
+#	digole_update(tboil,tnez,t4,h4,r5,b9)
+	digole_update(tboil,pumpRate,t4,h4,r5,b9)
     
     	#only sleep the time we need to respect the clock
     	remainingTimeToSleep = time.time() - timestamp
