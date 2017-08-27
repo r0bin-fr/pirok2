@@ -1,2 +1,6 @@
 # pirok2
-Pirok v1 update with mini-OLED
+Pirok2 is update of Pirok project, with new features such as:
+- mini-OLED integrated screen
+- rotary command
+- touch detector 
+- pump pressure profiling
