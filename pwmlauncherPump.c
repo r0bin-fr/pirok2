@@ -3,8 +3,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define PWCLKDIVIDER	2
-#define PWRANGE  	4000
+//16 et 100 = 12Khz
+//18=PWM matériel RPi
+#define PWCLKDIVIDER	16 //2
+#define PWRANGE  	100 //4000
+#define GPIOPINPWM	18 //13
 
 /*****************************************
  * WiringPi launcher to set PWM          *
@@ -35,7 +38,7 @@ int main (int argc, char *argv[])
   }
 
   //PWM mode
-  pinMode(13,PWM_OUTPUT);
+  pinMode(GPIOPINPWM,PWM_OUTPUT);
   //PWM "predictive mode"
   pwmSetMode(PWM_MODE_MS); 
 
@@ -43,5 +46,5 @@ int main (int argc, char *argv[])
   pwmSetClock(PWCLKDIVIDER);
   pwmSetRange (PWRANGE) ;
   //setting drive according to the RANGE 
-  pwmWrite (13, (drive * (PWRANGE / 100))); 
+  pwmWrite (GPIOPINPWM, (drive * (PWRANGE / 100))); 
 }

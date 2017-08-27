@@ -5,6 +5,7 @@
 
 #define PWCLKDIVIDER	2400
 #define PWRANGE  	4000
+#define GPIOPINPWM	13 //13 is software PWM, 18 is hardware PWM but already used
 
 /*****************************************
  * WiringPi launcher to set PWM          *
@@ -35,7 +36,7 @@ int main (int argc, char *argv[])
   }
 
   //PWM mode
-  pinMode(18,PWM_OUTPUT);
+  pinMode(GPIOPINPWM,PWM_OUTPUT);
   //PWM "predictive mode"
   pwmSetMode(PWM_MODE_MS); 
 
@@ -43,5 +44,5 @@ int main (int argc, char *argv[])
   pwmSetClock(PWCLKDIVIDER);
   pwmSetRange (PWRANGE) ;
   //setting drive according to the RANGE 
-  pwmWrite (18, (drive * (PWRANGE / 100))); 
+  pwmWrite (GPIOPINPWM, (drive * (PWRANGE / 100))); 
 }
