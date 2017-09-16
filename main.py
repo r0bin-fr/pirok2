@@ -160,7 +160,7 @@ def getWLvalue(range):
 
 
 #update the screen
-def digole_update(tboil,tnez,temp,hum,range,bar):
+def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
     	#display the current time
     	if(int(time.time())%2 == 0):    
 		stime=time.strftime('%H:%M')
@@ -206,9 +206,12 @@ def digole_update(tboil,tnez,temp,hum,range,bar):
 	#temperature ambiante et hygrometrie
 	digole.setFGcolor(cBlanc)
 	digole.setFont(fSmall)
+	if(isPumpRunning):
+		st="  {0:.0f}a   ".format(pumpRate)
+	else:
 #	digole.printText2(4,6,"23+ / 40a")
 #	digole.printText2(4,6,st)
-	st="{0:.1f}+ / {1:.0f}a".format(temp,hum)
+		st="{0:.1f}+ / {1:.0f}a".format(temp,hum)
 	digole.printText2(3,6,st)
 
 # screen on with timeout
@@ -256,7 +259,7 @@ task9.start()
 task6PID.start()
 
 #default pump rate
-SSRControl.setPumpPWM( pumpRate )
+SSRControl.setPumpPWM( pumpRate, 1 )
 isPumpRunning = 0
 pumpTimestamp = 0
 
@@ -359,7 +362,7 @@ while not done:
 	b9 = barData.getRange()
 	#update the screen
 #	digole_update(tboil,tnez,t4,h4,r5,b9)
-	digole_update(tboil,pumpRate,t4,h4,r5,b9)
+	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate)
     
     	#only sleep the time we need to respect the clock
     	remainingTimeToSleep = time.time() - timestamp
