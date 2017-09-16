@@ -35,7 +35,7 @@ class TaskPrintHum(threading.Thread):
 		if ( humidity == 0 ) and (temperature == 0):
 			print "Pas de donnees"
       		else:
-			print 'Time={0:d} Temp={1:0.1f}*C  Humidity={2:0.1f}%'.format((int(time.time())),temperature, humidity)	
+			#print 'Time={0:d} Temp={1:0.1f}*C  Humidity={2:0.1f}%'.format((int(time.time())),temperature, humidity)	
 			self.mData.setTempHum(temperature, humidity)
 
 		#wait for 30 seconds before new read, we don't need so much updates on the hygrometry
