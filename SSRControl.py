@@ -6,18 +6,18 @@ import sys
 import subprocess
 
 #call a C program using WiringPi to control PWM
-def setBoilerPWM(drive=0):
+def setBoilerPWM(drive=0, doinit=0):
 	try:
-        	task = subprocess.Popen(['sudo','/home/pi/pirok2/pwmlauncher',str(drive)])
+        	task = subprocess.Popen(['sudo','/home/pi/pirok2/pwmlauncher',str(doinit),str(drive)])
 		task_result = task.returncode
         except:
 		print "Wiring pi error"
 
 
 #call a C program using WiringPi to control PWM
-def setPumpPWM(drive=0):
+def setPumpPWM(drive=0, doinit=0):
         try:
-                task = subprocess.Popen(['sudo','/home/pi/pirok2/pwmlauncherPump',str(drive)])
+                task = subprocess.Popen(['sudo','/home/pi/pirok2/pwmlauncherPump',str(doinit),str(drive)])
                 task_result = task.returncode
         except:
                 print "Wiring pi error"
