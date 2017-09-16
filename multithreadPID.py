@@ -2,8 +2,9 @@ import os
 import glob
 import time
 import threading
-import SSRControl
+#import SSRControl
 import readMaxim
+from RPi import GPIO
 
 #mode BOOST or not?
 BOILER_BOOST_MODE = 1
@@ -37,7 +38,11 @@ class TaskControlPID(threading.Thread):
 	self.m_iGain = 0.0
 	self.m_pGain = 1.0 
 	self.m_dGain = 0.0
-
+	#init RPi.GPIO library
+	GPIO.setmode(GPIO.BCM)
+	GPIO.setup(13, GPIO.OUT)
+	self.pwmBoiler = GPIO.PWM(13, 2)  # pin=13 frequency=2Hz
+	self.pwmBoiler.start(0)
 
     #based on James Ward's PID algorithm
     def pid_update(self,error = 0.0, position = 0.0):
@@ -67,6 +72,9 @@ class TaskControlPID(threading.Thread):
 	
 	drive = 0.0
 	lastdrive = 0.0
+	#init PWM lib
+	#SSRControl.setBoilerPWM( 0,1 )
+
 	#based on James Ward's PID algorithm	
 	while not self._stopevent.isSet(): 
 		#PID computation
@@ -110,12 +118,17 @@ class TaskControlPID(threading.Thread):
 		if ( drive != lastdrive ):
 			drv = int(drive * 100)
 			self.setCurrentDrive( drv )
-			SSRControl.setBoilerPWM( drv )
+			#SSRControl.setBoilerPWM( drv )
+			self.pwmBoiler.ChangeDutyCycle( drv )
 
 		#wait the remaining time (typically, slot = 1 second)
 		remain = next - time.time()
 		if ( remain > 0.0 ):
 			self._stopevent.wait(remain)
+
+	#in case of clean stop: stop PWM too
+	self.pwmBoiler.stop()	
+	GPIO.cleanup()
 
     def stop(self): 
 	print "stopping thread no", self.taskid
