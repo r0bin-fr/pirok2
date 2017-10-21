@@ -189,6 +189,11 @@ class DigoleMaster:
 	def setDrawMode(self,m):
 	        self.sendCmd("DM")
 	        self.sendCmd(m)
+
+	#- change la direction de lecture
+	def setDrawDir(self,m):
+	        self.sendCmd("SD")
+	        self.sendVal(m)
 	
 	#- change l'ecran d'accueil
 	def setWelcomeScreen(self,bitm):

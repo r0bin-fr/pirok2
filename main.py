@@ -227,6 +227,7 @@ def screenOffNow():
 	global digole,flagTouch,cBlanc
         digole.setScreen(0)
         digole.clearScreen()
+	#digole.setDrawDir(2)
         flagTouch=0
 	cBlanc = OLED_WHITE_STD
 
