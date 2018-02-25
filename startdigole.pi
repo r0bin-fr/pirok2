@@ -165,7 +165,7 @@ setFGcolor(0)
 fillRect(25,110,135,128)
 time.sleep(1)
 #display IP address
-setFGcolor(250)
+setFGcolor(254)
 myip = get_ip_address("wlan0")
 printText(30,120,myip)
 #retry 5 times to display IP

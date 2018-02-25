@@ -46,8 +46,6 @@ class RotaryEncoder:
 	self.lokE = threading.Lock()
 	self.lokP = threading.Lock()
 	self.lokT = threading.Lock()
-	self.Ptimestamp = time.time()
-	self.Pantibug = 0
 
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setup(a_pin, GPIO.IN)

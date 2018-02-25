@@ -25,7 +25,7 @@ TEMPBACKUP = '/home/pi/pirok2/settings.txt'
 DEFAULT_BOILER_TEMP = 115
 BOOST_BOILER_TEMP   = 124
 SCREEN_UPDATE_TIME  = 0.5  #500ms
-OLED_TIMEOUT 	    = 30   #in seconds
+OLED_TIMEOUT 	    = 60   #in seconds
 OLED_FADE_TIMEOUT   = 5    #in seconds
 OLED_WHITE_STD	    = 254
 OLED_WHITE_FADE	    = 98 #76
@@ -43,7 +43,7 @@ WG_RANGE_MAX = 50.0
 cNoir = 0#4 #254
 cBlanc = OLED_WHITE_STD #254 #4
 cB1=cB2=cB3=63
-cBleu = 0x32 #2
+cBleu = 70 #0x32 #2
 cRouge = 0xC4 #224
 cVert = 28
 fBig=200
@@ -181,7 +181,8 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
 	digole.printText(st)
 	
 	#pression extraction
-	tshiftx=15
+#matbf	tshiftx=15
+	tshiftx=5
 	digole.setFGcolor(cVert)
 	digole.printTextP(89+tshiftx,20,"d")	
 	digole.setFGcolor(cBlanc)
