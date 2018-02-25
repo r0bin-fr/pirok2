@@ -43,7 +43,7 @@ WG_RANGE_MAX = 50.0
 cNoir = 0#4 #254
 cBlanc = OLED_WHITE_STD #254 #4
 cB1=cB2=cB3=63
-cBleu = 70 #0x32 #2
+cBleu = 82 #70 #0x32 #2
 cRouge = 0xC4 #224
 cVert = 28
 fBig=200
@@ -159,8 +159,58 @@ def getWLvalue(range):
 	return int(rpercent * 6)
 
 
+def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
+	txadj = 5
+	#temp nez	
+	digole.setFont(fSmall)
+	digole.setFGcolor(cRouge)
+	digole.printTextP(5+txadj,20,"c")
+	if( consigneBoost == 0 ):
+		digole.setFGcolor(cBlanc)
+	if tboil > 200:
+		tboil = 199.0
+	if tboil < 0:
+		tboil = 0.0
+	st=" {0:.1f}+   ".format(tnez)
+	#st=" {0:.0f}/{1:.0f}+   ".format(tboil, temptarget)
+	digole.printText(st)
+
+	#timer
+	txadj=5
+	digole.setFGcolor(cVert)
+	digole.printTextP(5,40,"d")	
+	digole.setFGcolor(cBlanc)
+	#digole.printTextP(37,40,"     ")
+	st="{0:.1f}".format(pumpOfficialChrono)#(time.time() - pumpTimestamp))
+	digole.printTextP(39,40,str(st)+"\'    ")
+
+	#puissance pompe
+	digole.setFGcolor(cBleu)
+	digole.printTextP(12,57,"b")	
+	digole.setFGcolor(cBlanc)
+	st="{0:.0f}a  ".format(pumpRate)
+	digole.printTextP(39,60,st)
+
+	#pression extraction
+#	digole.setFGcolor(cBlanc)
+	digole.setFGcolor(cBleu)#242)
+	digole.setFont(fSmall)	
+	digole.printTextP(40,110,"b")
+	digole.setFont(fBig)
+	st="{0:2.1f}".format(bar)
+#	digole.printTextP(30,110,"    ")
+#	digole.printTextP(30,110,str(st)+" ")
+	digole.printText(str(st)+" ")
+#	digole.setFont(fSmall)	
+#	digole.printText("b")
+
+	
 #update the screen
 def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
+	#display a specific GUI when extracting
+	if(isPumpRunning):
+		return ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate)
+		
     	#display the current time
     	if(int(time.time())%2 == 0):    
 		stime=time.strftime('%H:%M')
@@ -186,10 +236,10 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
 	digole.setFGcolor(cVert)
 	digole.printTextP(89+tshiftx,20,"d")	
 	digole.setFGcolor(cBlanc)
-	digole.printTextP(116+tshiftx,20,"     ")
+#	digole.printTextP(116+tshiftx,20,"     ")
 	digole.printText2(0,1," ")
 	#st="{0:.1f}".format(random.uniform(5, 10))
-	st="{0:.1f}".format(bar)
+	st="{0:.1f}  ".format(bar)
 #	digole.printTextP(118+tshiftx,20,str(st)+"b")
 	digole.printTextP(118+tshiftx,20,str(st))
 	
@@ -263,10 +313,15 @@ task6PID.start()
 #default pump rate
 SSRControl.setPumpPWM( pumpRate, 1 )
 isPumpRunning = 0
+timeLastFlowRecorded = 0
 pumpTimestamp = 0
+pumpOfficialChrono = 0
 
 flagTouch=1
 touchTstamp = time.time()
+#init data before loop
+fl = flowData.getFlow()
+
 #infinite loop
 while not done:
 	#try to respect as much as possible the time slot
@@ -278,11 +333,19 @@ while not done:
 	if(fl > 0.0):
 		print "flow detected:", fl
 		screenOnWithTimeout()
+		#if a new extraction is starting...
+		if(isPumpRunning == 0):
+			pumpTimestamp = time.time()
+			digole.clearScreen()
 		isPumpRunning = 1
-		pumpTimestamp = time.time()
+		timeLastFlowRecorded = time.time()
+		pumpOfficialChrono = time.time() - pumpTimestamp
 	else:
-		#allow some time (10s) to play with pump pressure (case when not enough power to trigger flowmeter)
-		if((time.time() - pumpTimestamp) > 10.0):
+		#allow some time (15s) to play with pump pressure (case when not enough power to trigger flowmeter)
+		if((time.time() - timeLastFlowRecorded) > 15.0):
+			#if extraction is finishing...
+			if(isPumpRunning):
+				digole.clearScreen()
 			isPumpRunning = 0
 			#make sure we put back the full power after use
 			if(pumpRate < 100):
