@@ -46,6 +46,8 @@ class RotaryEncoder:
 	self.lokE = threading.Lock()
 	self.lokP = threading.Lock()
 	self.lokT = threading.Lock()
+	self.Ptimestamp = time.time()
+	self.Pantibug = 0
 
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setup(a_pin, GPIO.IN)
@@ -120,9 +122,22 @@ class RotaryEncoder:
 	self.lokE.release()
         return steps
 
-    def updatePush(self):
+    def updatePush(self,args):
 	self.lokP.acquire()
-	self.bPush = True
+
+	#avoid false positives
+	if(GPIO.input(self.sw_pin) == 0):
+		self.bPush = True
+
+#		self.Ptimestamp = time.time()
+#		self.Pantibug = 1
+#	else:
+#		print "time diff=",(time.time()-self.Ptimestamp
+		#if we press enough time, treat as a key push		
+#		if((time.time()-self.Ptimestamp)>1):
+#		if(self.Pantibug == 1):
+#			self.bPush = True
+#			self.Pantibug == 0
 	self.lokP.release()
     
     def get_bPushed(self):
@@ -137,7 +152,8 @@ class RotaryEncoder:
 
     def updateTouch(self):
 	self.lokT.acquire()
-        self.bTouch = True
+	if(GPIO.input(self.t_pin)):
+	        self.bTouch = True
 	self.lokT.release()
 
     def get_bTouched(self):
@@ -172,7 +188,7 @@ class RotaryEncoder:
         def isr(arg):
             	self.update()
 	def isr2(arg):
-		self.updatePush()
+		self.updatePush(arg)
 	def isr3(arg):
 		self.updateTouch()
         #self.gpio.trigger(self.a_pin, self.gpio.EDGE_BOTH, isr)
@@ -187,8 +203,9 @@ class RotaryEncoder:
 #	GPIO.add_event_callback(self.t_pin,isr3)
 	GPIO.add_event_detect(self.a_pin,GPIO.BOTH,callback=isr)
 	GPIO.add_event_detect(self.b_pin,GPIO.BOTH,callback=isr)
-	GPIO.add_event_detect(self.sw_pin,GPIO.FALLING,callback=isr2,bouncetime=300)
-	GPIO.add_event_detect(self.t_pin,GPIO.RISING,callback=isr3,bouncetime=300)
+	GPIO.add_event_detect(self.sw_pin,GPIO.BOTH,callback=isr2,bouncetime=300)
+	GPIO.add_event_detect(self.t_pin,GPIO.RISING,callback=isr3,bouncetime=150)
+#	GPIO.add_event_detect(self.t_pin,GPIO.RISING,callback=isr3)
 
 
     class Worker(threading.Thread):
