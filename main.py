@@ -23,12 +23,13 @@ import multithreadPID
 #Temperature file backup
 TEMPBACKUP = '/home/pi/pirok2/settings.txt'
 DEFAULT_BOILER_TEMP = 115
-BOOST_BOILER_TEMP   = 124
+BOOST_BOILER_TEMP   = 126
 SCREEN_UPDATE_TIME  = 0.5  #500ms
-OLED_TIMEOUT 	    = 60   #in seconds
+OLED_TIMEOUT 	    = 40   #in seconds
 OLED_FADE_TIMEOUT   = 5    #in seconds
 OLED_WHITE_STD	    = 254
 OLED_WHITE_FADE	    = 98 #76
+EXTRACTION_TIMEOUT   = 12   #in seconds
 
 #Encoder
 A_PIN = 5
@@ -46,6 +47,7 @@ cB1=cB2=cB3=63
 cBleu = 82 #70 #0x32 #2
 cRouge = 0xC4 #224
 cVert = 28
+cGris = cBleu #76
 fBig=200
 fSmall=201
 
@@ -180,7 +182,6 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
 	digole.setFGcolor(cVert)
 	digole.printTextP(5,40,"d")	
 	digole.setFGcolor(cBlanc)
-	#digole.printTextP(37,40,"     ")
 	st="{0:.1f}".format(pumpOfficialChrono)#(time.time() - pumpTimestamp))
 	digole.printTextP(39,40,str(st)+"\'    ")
 
@@ -192,17 +193,12 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
 	digole.printTextP(39,60,st)
 
 	#pression extraction
-#	digole.setFGcolor(cBlanc)
 	digole.setFGcolor(cBleu)#242)
 	digole.setFont(fSmall)	
 	digole.printTextP(40,110,"b")
 	digole.setFont(fBig)
 	st="{0:2.1f}".format(bar)
-#	digole.printTextP(30,110,"    ")
-#	digole.printTextP(30,110,str(st)+" ")
 	digole.printText(str(st)+" ")
-#	digole.setFont(fSmall)	
-#	digole.printText("b")
 
 	
 #update the screen
@@ -211,12 +207,6 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
 	if(isPumpRunning):
 		return ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate)
 		
-    	#display the current time
-    	if(int(time.time())%2 == 0):    
-		stime=time.strftime('%H:%M')
-	else:
-		stime=time.strftime('%H %M')
-
 	#temp chaudiere	
 	digole.setFont(fSmall)
 	digole.setFGcolor(cRouge)
@@ -250,20 +240,29 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
 
 	#temperature
 	digole.setFGcolor(cBlanc)
-#	st="{0:.1f}".format(random.uniform(92, 95))
 	st="{0:.1f}".format(tnez)
 	digole.printTextP(50,80,str(st)+"+ ")
+
+    	#get the current time
+    	if(int(time.time())%2 == 0):    
+		stime=time.strftime('%H.%M')
+	else:
+		stime=time.strftime('%H\'%M')
 
 	#temperature ambiante et hygrometrie
 	digole.setFGcolor(cBlanc)
 	digole.setFont(fSmall)
-	if(isPumpRunning):
-		st="  {0:.0f}a   ".format(pumpRate)
-	else:
-#	digole.printText2(4,6,"23+ / 40a")
-#	digole.printText2(4,6,st)
-		st="{0:.1f}+ / {1:.0f}a".format(temp,hum)
-	digole.printText2(3,6,st)
+#	st="{0:.1f}+ / {1:.0f}a".format(temp,hum)
+#	digole.printText2(3,6,st)
+#	digole.printText2(1,6,stime+" ")
+	digole.printTextP(5,118,stime+" ")
+
+	st="{0:.1f}+/{1:.0f}a".format(temp,hum)
+	digole.setFGcolor(cGris)
+	digole.printTextP(66,118,st)
+#	digole.printText2(1,6,stime+st)
+
+
 
 # screen on with timeout
 def screenOnWithTimeout():
@@ -279,8 +278,11 @@ def screenOffNow():
         digole.setScreen(0)
         digole.clearScreen()
 	#digole.setDrawDir(2)
+	digole.setOLEDOFF()
         flagTouch=0
 	cBlanc = OLED_WHITE_STD
+
+
 
 # -------- Main Program Loop -----------
 #intercept control c for nice quit
@@ -342,7 +344,7 @@ while not done:
 		pumpOfficialChrono = time.time() - pumpTimestamp
 	else:
 		#allow some time (15s) to play with pump pressure (case when not enough power to trigger flowmeter)
-		if((time.time() - timeLastFlowRecorded) > 15.0):
+		if((time.time() - timeLastFlowRecorded) > EXTRACTION_TIMEOUT):
 			#if extraction is finishing...
 			if(isPumpRunning):
 				digole.clearScreen()

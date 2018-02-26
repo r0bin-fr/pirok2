@@ -9,7 +9,7 @@ from RPi import GPIO
 #mode BOOST or not?
 BOILER_BOOST_MODE = 1
 #boiler max temperature for boost mode
-BOILER_MAX_TEMP = 124
+BOILER_MAX_TEMP = 126
 #boiler threshold to stop boost mode
 BOILER_BOOST_GROUP_LIMIT = 84
 

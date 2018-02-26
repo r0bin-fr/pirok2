@@ -260,3 +260,18 @@ class DigoleMaster:
 	def close(self):
 		self.spi.close()
 
+        #switch module off
+        def setOLEDOFF(self):
+                self.sendCmd("DNALL")
+
+	#switch module off
+        def getTemp(self):
+                self.sendCmd("RDTMP")
+		c = self.spi.readbytes(1)
+		print "spiread=",c
+		c= 256*c
+		
+		d = self.spi.readbytes(1)
+		print "spiread=",d
+		c= c+d
+		return c
