@@ -16,6 +16,7 @@ def setBoilerPWM(drive=0, doinit=0):
 
 #call a C program using WiringPi to control PWM
 def setPumpPWM(drive=0, doinit=0):
+#	print "setPumpPWM val", drive
         try:
                 task = subprocess.Popen(['sudo','/home/pi/pirok2/pwmlauncherPump',str(doinit),str(drive)])
                 task_result = task.returncode
