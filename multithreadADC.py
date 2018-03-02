@@ -30,14 +30,15 @@ class TaskPrintBar(threading.Thread):
 #			print "start adc"
     			val1 = adc.read_adc(0, gain=GAIN)
 #			print "val1=",val1
-#			self._stopevent.wait(0.01)
-#    			val2 = adc.read_adc(0, gain=GAIN)
+			self._stopevent.wait(0.01)
+   			val2 = adc.read_adc(0, gain=GAIN)
 #			print "val2=",val2
-#			self._stopevent.wait(0.01)
-#    			val3 = adc.read_adc(0, gain=GAIN)
+			self._stopevent.wait(0.01)
+    			val3 = adc.read_adc(0, gain=GAIN)
 #			print "val3=",val3
-#			valADC = (val1+val2+val3)/3 
-			valADC = (val1) 
+			valADC = (val1+val2+val3)/3
+#			print "valfinal=",valADC 
+#			valADC = (val1) 
 		except IOError as e:
 			print "ADC read error!"
 			print "I/O error({0}): {1}".format(e.errno, e.strerror)
@@ -51,6 +52,8 @@ class TaskPrintBar(threading.Thread):
 		#print("valeur pression en volt",valADCvolt)
 		valueCapteurPression = (20.6843*(valADCvolt-0.52))/4
 		#print("valeur presion en bar=",valueCapteurPression)
+		#lissage de la valeur avec une moyenne (pompe vibrante)
+		valueCapteurPression = (self.mData.getRange() + valueCapteurPression) / 2
 		#stockage de valeur		
 		self.mData.setRange(valueCapteurPression)
 		self._stopevent.wait(0.1) 
