@@ -441,4 +441,3 @@ while not done:
 	   
 #end the tasks nicely
 quitApplicationNicely()
-
