@@ -17,8 +17,8 @@ import multithreadHum
 import multithreadRange
 import multithreadADC
 import multithreadTemp
-import SSRControl
 import multithreadPID
+import multithreadPIDPump
 
 #Temperature file backup
 TEMPBACKUP = '/home/pi/pirok2/settings.txt'
@@ -29,7 +29,8 @@ OLED_TIMEOUT 	    = 40   #in seconds
 OLED_FADE_TIMEOUT   = 5    #in seconds
 OLED_WHITE_STD	    = 254
 OLED_WHITE_FADE	    = 98 #76
-EXTRACTION_TIMEOUT   = 12   #in seconds
+EXTRACTION_TIMEOUT  = 12   #in seconds
+DEFAULTPUMPVAL		= 9    #in bar
 
 #Encoder
 A_PIN = 5
@@ -58,7 +59,7 @@ dhtData = readMaxim.MaximData(0)
 hsrData = readHSR.HSRData(0)
 barData = readHSR.HSRData(0)
 flowData = readFlow.FlowData()
-pumpRate = 100
+pumpPTarget = DEFAULTPUMPVAL
 
 #tasks
 task1 = multithreadTemp.TaskPrintTemp(0,maximT1)
@@ -70,6 +71,8 @@ task9 = multithreadADC.TaskPrintBar(8,barData)
 #maximT2 is the group temperature (for boost algorithm), maximT1 is the boiler temp sensor, default target value = 115C
 temptarget=115
 task6PID = multithreadPID.TaskControlPID(6,maximT2,maximT1,temptarget)
+#Pump PID setup
+task7PID = multithreadPIDPump.TaskControlPID(7,barData,9.0)
 
 #how to quit application nicely
 def quitApplicationNicely():
@@ -77,6 +80,7 @@ def quitApplicationNicely():
 	saveSettings()
 	digole.setScreen(0)
 	task6PID.stop()
+	task7PID.stop()
 	task1.stop()
 	task2.stop()
 	task4.stop()
@@ -161,7 +165,7 @@ def getWLvalue(range):
 	return int(rpercent * 6)
 
 
-def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
+def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget):
 	txadj = 5
 	#temp nez	
 	digole.setFont(fSmall)
@@ -191,21 +195,23 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
 	digole.setFGcolor(cBlanc)
 	st="{0:.0f}a  ".format(pumpRate)
 	digole.printTextP(39,60,st)
-
+	
 	#pression extraction
 	digole.setFGcolor(cBleu)#242)
 	digole.setFont(fSmall)	
-	digole.printTextP(40,110,"b")
+	digole.printTextP(0,110,"b")
 	digole.setFont(fBig)
 	st="{0:2.1f}".format(bar)
 	digole.printText(str(st)+" ")
+	st=str(int(pumpPTarget))+" "
+	digole.printText(st)
 
 	
 #update the screen
-def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate):
+def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget):
 	#display a specific GUI when extracting
 	if(isPumpRunning):
-		return ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate)
+		return ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget)
 		
 	#temp chaudiere	
 	digole.setFont(fSmall)
@@ -311,9 +317,9 @@ task4.start()
 task5.start()
 task9.start()
 task6PID.start()
+task7PID.start()
 
-#default pump rate
-SSRControl.setPumpPWM( pumpRate, 1 )
+#pump data
 isPumpRunning = 0
 timeLastFlowRecorded = 0
 pumpTimestamp = 0
@@ -350,9 +356,11 @@ while not done:
 				digole.clearScreen()
 			isPumpRunning = 0
 			#make sure we put back the full power after use
-			if(pumpRate < 100):
-				pumpRate = 100
-				SSRControl.setPumpPWM( pumpRate )
+			#if(pumpRate < 100):
+			#	pumpRate = 100
+			#	SSRControl.setPumpPWM( pumpRate )
+			pumpPTarget = DEFAULTPUMPVAL
+			task7PID.setTargetPressure(pumpPTarget)
 
 	#get touch update
         if encoder.get_bTouched():
@@ -401,12 +409,13 @@ while not done:
 		#only update pump when extracting, and temp when idle
 		if(isPumpRunning):
 			#update pump rate
-			pumpRate += (2*delta)
-			if(pumpRate > 100):
-				pumpRate = 100
-			if(pumpRate < 1):
-				pumpRate = 1
-			SSRControl.setPumpPWM( pumpRate )
+			pumpPTarget += delta
+			if(pumpPTarget > 11):
+				pumpPTarget = 11
+			if(pumpPTarget < 0):
+				pumpPTarget = 0
+			task7PID.setTargetPressure(pumpPTarget)
+			
 		else:
 			#update temp target
 			if(consigneBoost == 0):
@@ -427,9 +436,10 @@ while not done:
 	t4,h4 = dhtData.getTempHum()
 	r5 = hsrData.getRange()
 	b9 = barData.getRange()
+	pumpRate = task7PID.getCurrentDrive()
+	
 	#update the screen
-#	digole_update(tboil,tnez,t4,h4,r5,b9)
-	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate)
+	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate,pumpPTarget)
     
     	#only sleep the time we need to respect the clock
     	remainingTimeToSleep = time.time() - timestamp
@@ -441,3 +451,4 @@ while not done:
 	   
 #end the tasks nicely
 quitApplicationNicely()
+

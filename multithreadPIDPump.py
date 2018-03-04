@@ -24,12 +24,13 @@ class TaskControlPID(threading.Thread):
 	self.m_latestPressure = 9.0
 	self.m_latestPower = 0.0
 	#init PID values
-	self.m_pGain = 2.0
-	self.m_iGain = 0.1 
+	self.m_PIDBASE = 50
+	self.m_pGain = 0.6
+	self.m_iGain = 0.01 
 	self.m_iState = 0.0 
-	self.m_iMin  = -1.0
-	self.m_iMax  = 1.0
-	self.m_dGain = 0.1
+	self.m_iMin  = -self.m_PIDBASE
+	self.m_iMax  = self.m_PIDBASE
+	self.m_dGain = 0.0
 	self.m_dState = 0.0
 	
     #based on James Ward's PID algorithm
@@ -80,18 +81,23 @@ class TaskControlPID(threading.Thread):
 		drive = self.pid_update( cTargetPressure - latestPressure, latestPressure )
 						
 		#clamp the output power to sensible range
-		if ( drive > 1.0 ):
-			drive = 1.0
-		if ( drive < 0.0 ):
-			drive = 0.0
+		if ( drive > self.m_PIDBASE ):
+			drive = self.m_PIDBASE
+		if ( drive < -self.m_PIDBASE ):
+			drive = -self.m_PIDBASE
 
 		#update the pump power (with PWM) if last state changed
 		if ( drive != lastdrive ):
-			drv = int(drive * 100)
-			self.setCurrentDrive( drv )
+			drv = self.m_latestPower + drive
+			if(drv < 50):
+				drv = 50
+			if(drv > 100):
+				drv = 100
 			print "Bar/",latestPressure,"/Target/",cTargetPressure,"/Drv/",drv
-			#print "Pump set drive to ",drv," =translate to= ",( 50 + (drv/2) ),"%"
-			SSRControl.setPumpPWM( 50 + (drv/2) )
+			#SSRControl.setPumpPWM( 50 + (drv/2) )
+			self.setCurrentDrive( drv )
+			SSRControl.setPumpPWM( drv )
+			self.m_latestPower = drv
 
 		#wait the remaining time (typically, slot = 1 second)
 		remain = next - time.time()
