@@ -264,7 +264,7 @@ class DigoleMaster:
         def setOLEDOFF(self):
                 self.sendCmd("DNALL")
 
-	#switch module off
+	#switch module off //DOESNT WORKS
         def getTemp(self):
                 self.sendCmd("RDTMP")
 		c = self.spi.readbytes(1)
@@ -275,3 +275,14 @@ class DigoleMaster:
 		print "spiread=",d
 		c= c+d
 		return c
+	
+	#scroll display
+	def scrollDisp(self,x,y,w,h,dx,dy):
+		self.sendCmd("MA")
+		self.sendVals([x,y,w,h,dx,dy])		
+
+	#scroll display shortcut
+	def scrollDispX(self,dx):
+		self.sendCmd("MA")
+		self.sendVals([0,0,160,128,dx,0])		
+	

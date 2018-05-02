@@ -23,14 +23,14 @@ import multithreadPIDPump
 #Temperature file backup
 TEMPBACKUP = '/home/pi/pirok2/settings.txt'
 DEFAULT_BOILER_TEMP = 115
-BOOST_BOILER_TEMP   = 126
+BOOST_BOILER_TEMP   = 124
 SCREEN_UPDATE_TIME  = 0.5  #500ms
 OLED_TIMEOUT 	    = 40   #in seconds
 OLED_FADE_TIMEOUT   = 5    #in seconds
 OLED_WHITE_STD	    = 254
 OLED_WHITE_FADE	    = 98 #76
 EXTRACTION_TIMEOUT  = 12   #in seconds
-DEFAULTPUMPVAL		= 9    #in bar
+DEFAULTPUMPVAL		= 11    #in bar
 
 #Encoder
 A_PIN = 5
@@ -72,7 +72,7 @@ task9 = multithreadADC.TaskPrintBar(8,barData)
 temptarget=115
 task6PID = multithreadPID.TaskControlPID(6,maximT2,maximT1,temptarget)
 #Pump PID setup
-task7PID = multithreadPIDPump.TaskControlPID(7,barData,9.0)
+task7PID = multithreadPIDPump.TaskControlPID(7,barData,DEFAULTPUMPVAL)
 
 #how to quit application nicely
 def quitApplicationNicely():
@@ -165,7 +165,71 @@ def getWLvalue(range):
 	return int(rpercent * 6)
 
 
+#Graph for extraction
+ext_rang = 0
+graphTX = 0
+graphTY = 0
+graphRX=0
+graphRY=0
+COL_X = 1
+COL_Y = 110
+def init_graph():
+	global ext_rang 
+	ext_rang= COL_X+1
+	global graphTX
+	graphTX=-1
+	digole.clearScreen()
+	digole.setFGcolor(cBlanc)
+	#AXES
+	digole.drawLine(COL_X,0,COL_X,COL_Y+1)
+	digole.drawLine(COL_X,COL_Y,160,COL_Y)
+	digole.drawLine(COL_X,COL_Y+1,160,COL_Y+1)
+	#DOTS
+	i=0
+	while(i<COL_Y):
+		digole.drawLine(COL_X-1,i,COL_X,i)
+		i=i+10
+	j=COL_X+10
+	while(j<160):
+		digole.drawLine(j,COL_Y+1,j,COL_Y+2)
+		j=j+10
+
+
 def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget):
+	global ext_rang
+	global graphTX,graphTY,graphRX,graphRY
+
+	digole.setFont(fSmall)
+	digole.setFGcolor(cBlanc)
+	st=" {0:.1f}b {1:.1f}b  ".format(bar,pumpPTarget)	
+	digole.printTextP(0,120,st)
+
+	#init first line
+	if(graphTX == -1):
+		graphTX=ext_rang
+		graphTY=(COL_Y-(pumpPTarget*10))
+		graphRX=ext_rang
+		graphRY=(COL_Y-(pumpPTarget*10))
+
+	#draw target
+	digole.setFGcolor(cRouge)
+	digole.drawLine(graphTX,graphTY,ext_rang,(COL_Y-(pumpPTarget*10)))
+	#draw current pressure
+	digole.setFGcolor(cBleu)
+	digole.drawLine(graphRX,graphRY,ext_rang,(COL_Y-(int(bar*10))))
+
+	#backup coords
+	graphTX=ext_rang
+	graphRX=ext_rang
+	graphTY=(COL_Y-(pumpPTarget*10))
+	graphRY=(COL_Y-(int(bar*10)))
+	#increment x
+	ext_rang = ext_rang + 2
+	if(ext_rang > 160):
+		init_graph()
+
+
+def ihm_extraction_old(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget):
 	txadj = 5
 	#temp nez	
 	digole.setFont(fSmall)
@@ -267,7 +331,11 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 	digole.setFGcolor(cGris)
 	digole.printTextP(66,118,st)
 #	digole.printText2(1,6,stime+st)
-
+	
+#	t=0
+#	while (t < 5):
+#		digole.scrollDisp(60,60,100,40,1,0)
+#		t=t+1
 
 
 # screen on with timeout
@@ -344,7 +412,8 @@ while not done:
 		#if a new extraction is starting...
 		if(isPumpRunning == 0):
 			pumpTimestamp = time.time()
-			digole.clearScreen()
+			#digole.clearScreen()
+			init_graph()
 		isPumpRunning = 1
 		timeLastFlowRecorded = time.time()
 		pumpOfficialChrono = time.time() - pumpTimestamp

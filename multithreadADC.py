@@ -56,7 +56,7 @@ class TaskPrintBar(threading.Thread):
 		valueCapteurPression = (self.mData.getRange() + valueCapteurPression) / 2
 		#stockage de valeur		
 		self.mData.setRange(valueCapteurPression)
-		self._stopevent.wait(0.1) 
+		self._stopevent.wait(0.01) 
 
 
     def stop(self): 
