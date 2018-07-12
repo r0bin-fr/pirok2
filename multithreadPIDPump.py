@@ -23,7 +23,8 @@ class TaskControlPID(threading.Thread):
 	
 	self.currentDrive = 0
 	#init regulator values
-	self.m_timeStep = 0.05
+#	self.m_timeStep = 0.05
+	self.m_timeStep = 0.1
 	self.m_targetPressure = pTarget
 	self.m_latestPressure = 9.0
 	self.m_latestPower = 0.0
@@ -135,7 +136,8 @@ class TaskControlPID(threading.Thread):
 			#moyenne
 			#drv = (drv + self.m_latestPower + self.m_latestPower2)/3
 			self.setCurrentDrive( drv )
-			SSRControl.setPumpPWM( drv )
+			if(self.m_latestPower != drv):
+				SSRControl.setPumpPWM( drv )
 			self.m_latestPower2 = self.m_latestPower
 			self.m_latestPower = drv
 

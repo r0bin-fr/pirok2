@@ -25,11 +25,11 @@ TEMPBACKUP = '/home/pi/pirok2/settings.txt'
 DEFAULT_BOILER_TEMP = 115
 BOOST_BOILER_TEMP   = 124
 SCREEN_UPDATE_TIME  = 0.5  #500ms
-OLED_TIMEOUT 	    = 40   #in seconds
+OLED_TIMEOUT 	    = 60   #in seconds
 OLED_FADE_TIMEOUT   = 5    #in seconds
 OLED_WHITE_STD	    = 254
 OLED_WHITE_FADE	    = 98 #76
-EXTRACTION_TIMEOUT  = 12   #in seconds
+EXTRACTION_TIMEOUT  = 7   #in seconds
 DEFAULTPUMPVAL		= 11    #in bar
 
 #Encoder
@@ -201,8 +201,8 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
 
 	digole.setFont(fSmall)
 	digole.setFGcolor(cBlanc)
-	st=" {0:.1f}b {1:.1f}b  ".format(bar,pumpPTarget)	
-	digole.printTextP(0,120,st)
+	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,tnez)	
+	digole.printTextP(15,120,st)
 
 	#init first line
 	if(graphTX == -1):

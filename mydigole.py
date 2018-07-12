@@ -28,7 +28,7 @@ class DigoleMaster:
 		# Activation du bus SPI
 		self.spi = spidev.SpiDev() #nouvel objet SPI
 		self.spi.open(0,0) # sur port SPI 0 CS 0
-		self.spi.max_speed_hz = 500000 #1000000 #200000 #15000000 # vitesse = 200 KHz pour le digole (max 15000000)
+		self.spi.max_speed_hz = 200000 #1000000 #200000 #15000000 # vitesse = 200 KHz pour le digole (max 15000000)
 		self.spi.bits_per_word = 8 #8 bits per word
 		self.spi.lsbfirst = False #MSB bits
 		self.spi.mode = 0 #mode SPI O
