@@ -34,7 +34,7 @@ int main (int argc, char *argv[])
   drive = atoi(argv[2]);
   if(drive > 100)
     drive = 100;
-  printf("pump drive=%d%\n",drive);
+//  printf("pump drive=%d%\n",drive);
 
   //init wiringpi
 	if (wiringPiSetupGpio() == -1){

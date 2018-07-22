@@ -14,6 +14,15 @@ class TaskPrintBar(threading.Thread):
         self._stopevent = threading.Event( ) 
 	self.mData = mData
 	self.buffer = 0.0
+	self.tempo = 1
+
+    def rythmeHaut(self):
+	#100ms
+	self.tempo = 0.1
+
+    def rythmeBas(self):
+	#1 seconde
+	self.tempo = 1	
 
     def run(self):
     	print "thread capteur no", self.taskid, "is readry!"
@@ -57,7 +66,7 @@ class TaskPrintBar(threading.Thread):
 		#stockage de valeur		
 		self.mData.setRange(valueCapteurPression)
 #		self._stopevent.wait(0.01) 
-		self._stopevent.wait(0.1) 
+		self._stopevent.wait(self.tempo) 
 
 
     def stop(self): 

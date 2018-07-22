@@ -65,8 +65,6 @@ class TaskControlPID(threading.Thread):
 
 	return pTerm + dTerm + iTerm
 
-
-
     def run(self):
     	print "Thread PID no", self.taskid, "is readry!\n > Based on James Ward's PID algorithm"
 	

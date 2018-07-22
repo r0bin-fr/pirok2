@@ -144,3 +144,6 @@ def scroll(x,y,w,h,Ox,Oy):
 #---------------------
 
 setScreen(0)
+sendCmd("DNMCU")
+sendCmd("DNALL")
+

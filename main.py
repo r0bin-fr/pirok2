@@ -7,6 +7,7 @@ import calendar
 import signal
 import sys
 from subprocess import call
+from time import gmtime, strftime
 import mydigole
 import myencoder
 import random
@@ -19,6 +20,7 @@ import multithreadADC
 import multithreadTemp
 import multithreadPID
 import multithreadPIDPump
+import multithreadHX711
 
 #Temperature file backup
 TEMPBACKUP = '/home/pi/pirok2/settings.txt'
@@ -30,7 +32,7 @@ OLED_FADE_TIMEOUT   = 5    #in seconds
 OLED_WHITE_STD	    = 254
 OLED_WHITE_FADE	    = 98 #76
 EXTRACTION_TIMEOUT  = 7   #in seconds
-DEFAULTPUMPVAL		= 11    #in bar
+DEFAULTPUMPVAL		= 9 #11    #in bar
 
 #Encoder
 A_PIN = 5
@@ -60,10 +62,12 @@ hsrData = readHSR.HSRData(0)
 barData = readHSR.HSRData(0)
 flowData = readFlow.FlowData()
 pumpPTarget = DEFAULTPUMPVAL
+poidsData = readHSR.HSRData(0)
 
 #tasks
 task1 = multithreadTemp.TaskPrintTemp(0,maximT1)
 task2 = multithreadTemp.TaskPrintTemp(1,maximT2)
+task3 = multithreadHX711.TaskPrintWeight(2,poidsData)
 task4 = multithreadHum.TaskPrintHum(3,dhtData)
 task5 = multithreadRange.TaskPrintRange(4,hsrData)
 task9 = multithreadADC.TaskPrintBar(8,barData)
@@ -83,6 +87,7 @@ def quitApplicationNicely():
 	task7PID.stop()
 	task1.stop()
 	task2.stop()
+	task3.stop()
 	task4.stop()
 	task5.stop()
 	task9.stop()
@@ -175,8 +180,8 @@ COL_X = 1
 COL_Y = 110
 def init_graph():
 	global ext_rang 
-	ext_rang= COL_X+1
 	global graphTX
+	ext_rang= COL_X+1
 	graphTX=-1
 	digole.clearScreen()
 	digole.setFGcolor(cBlanc)
@@ -193,15 +198,17 @@ def init_graph():
 	while(j<160):
 		digole.drawLine(j,COL_Y+1,j,COL_Y+2)
 		j=j+10
+	#non-GUI settings for extraction control
+	
 
-
-def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget):
+def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids):
 	global ext_rang
 	global graphTX,graphTY,graphRX,graphRY
 
 	digole.setFont(fSmall)
 	digole.setFGcolor(cBlanc)
-	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,tnez)	
+#	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,tnez)	
+	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,poids)	
 	digole.printTextP(15,120,st)
 
 	#init first line
@@ -272,10 +279,10 @@ def ihm_extraction_old(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pump
 
 	
 #update the screen
-def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget):
+def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids):
 	#display a specific GUI when extracting
 	if(isPumpRunning):
-		return ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget)
+		return ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids)
 		
 	#temp chaudiere	
 	digole.setFont(fSmall)
@@ -311,6 +318,7 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 	#temperature
 	digole.setFGcolor(cBlanc)
 	st="{0:.1f}".format(tnez)
+#	st="{0:.1f}".format(poids)
 	digole.printTextP(50,80,str(st)+"+ ")
 
     	#get the current time
@@ -327,7 +335,8 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 #	digole.printText2(1,6,stime+" ")
 	digole.printTextP(5,118,stime+" ")
 
-	st="{0:.1f}+/{1:.0f}a".format(temp,hum)
+#	st="{0:.1f}+/{1:.0f}a".format(temp,hum)
+	st="{0:.1f}+/{1:.0f}a  ".format(temp,poids)
 	digole.setFGcolor(cGris)
 	digole.printTextP(66,118,st)
 #	digole.printText2(1,6,stime+st)
@@ -356,8 +365,29 @@ def screenOffNow():
         flagTouch=0
 	cBlanc = OLED_WHITE_STD
 
+#start extraction mode
+def startExtractionMode():
+	global pumpTimestamp, task3, task9,task7PID
+	print "startExtractionMode"
+	pumpTimestamp = time.time()
+	#accelere le rythme de pesee / pression / PID
+	#task3.rythmeHaut()
+	task9.rythmeHaut()
+	task7PID.rythmeHaut()
+	#affiche les courbes de pression
+	init_graph()
+	print "startExtractionMode2"
 
-
+#stop extraction mode
+def stopExtractionMode():
+	global digole, task3, task9,task7PID
+	print "stopExtractionMode"
+	digole.clearScreen()
+	#reduit le rythme de pesee / pression / PID
+	#task3.rythmeBas()
+	task9.rythmeBas()
+	task7PID.rythmeBas()
+	
 # -------- Main Program Loop -----------
 #intercept control c for nice quit
 signal.signal(signal.SIGINT, signal_handler)
@@ -381,6 +411,7 @@ encoder.start()
 #start multitasking
 task1.start()
 task2.start()
+task3.start()
 task4.start()
 task5.start()
 task9.start()
@@ -408,21 +439,24 @@ while not done:
 	#print "flow=",fl
 	if(fl > 0.0):
 		print "flow detected:", fl
-		screenOnWithTimeout()
-		#if a new extraction is starting...
-		if(isPumpRunning == 0):
-			pumpTimestamp = time.time()
-			#digole.clearScreen()
-			init_graph()
-		isPumpRunning = 1
-		timeLastFlowRecorded = time.time()
-		pumpOfficialChrono = time.time() - pumpTimestamp
+		#avoid false positives
+		if( fl < 10.0 ) and (isPumpRunning == 0):
+			print "fake extraction?"
+		else:
+			screenOnWithTimeout()
+			#if a new extraction is starting...
+			if(isPumpRunning == 0):
+				#start it
+				startExtractionMode()
+			isPumpRunning = 1
+			timeLastFlowRecorded = time.time()
+			pumpOfficialChrono = time.time() - pumpTimestamp
 	else:
 		#allow some time (15s) to play with pump pressure (case when not enough power to trigger flowmeter)
 		if((time.time() - timeLastFlowRecorded) > EXTRACTION_TIMEOUT):
 			#if extraction is finishing...
 			if(isPumpRunning):
-				digole.clearScreen()
+				stopExtractionMode()
 			isPumpRunning = 0
 			#make sure we put back the full power after use
 			#if(pumpRate < 100):
@@ -467,14 +501,23 @@ while not done:
 			consigneBoost = 0
 		#apply settings immediately
 		task6PID.setTargetTemp(temptarget)
-	
+
+	#did we press on the bassinelle?
+	poids = poidsData.getRange()
+#	if( poids > 50 ):
+#		print strftime("%Y-%m-%d %H:%M:%S", gmtime())," weight on:",poids,"g."
+	if ( poids > 10) and ( poids < 100 ):
+		print strftime("%Y-%m-%d %H:%M:%S", gmtime())," weight on:",poids,"g."
+		#if yes, turn on screen
+                screenOnWithTimeout()
+
 	#get encoder updates
 	delta = encoder.get_cycles()
 	#did we turn the encoder?
     	if delta!=0:	
 		#turn on screen
 		screenOnWithTimeout()
-
+	
 		#only update pump when extracting, and temp when idle
 		if(isPumpRunning):
 			#update pump rate
@@ -506,9 +549,10 @@ while not done:
 	r5 = hsrData.getRange()
 	b9 = barData.getRange()
 	pumpRate = task7PID.getCurrentDrive()
+	#poids = poidsData.getRange()
 	
 	#update the screen
-	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate,pumpPTarget)
+	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate,pumpPTarget,poids)
     
     	#only sleep the time we need to respect the clock
     	remainingTimeToSleep = time.time() - timestamp

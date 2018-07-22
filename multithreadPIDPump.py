@@ -24,7 +24,7 @@ class TaskControlPID(threading.Thread):
 	self.currentDrive = 0
 	#init regulator values
 #	self.m_timeStep = 0.05
-	self.m_timeStep = 0.1
+	self.m_timeStep = 1
 	self.m_targetPressure = pTarget
 	self.m_latestPressure = 9.0
 	self.m_latestPower = 0.0
@@ -38,6 +38,14 @@ class TaskControlPID(threading.Thread):
 	self.m_iMax  = self.m_PIDBASE
 	self.m_dGain = 0.0#30.0 #1.0
 	self.m_dState = 0.0
+
+    #rythmes hauts et bas
+    def rythmeHaut(self):
+        self.m_timeStep = 0.1
+
+    def rythmeBas(self):
+        self.m_timeStep = 1
+ 
 	
     #based on James Ward's PID algorithm
     def pid_update(self,error = 0.0, position = 0.0, pt= 0):
@@ -67,7 +75,6 @@ class TaskControlPID(threading.Thread):
 	self.m_dState = position
 
 	return pTerm + dTerm + iTerm
-
 
 
     def run(self):
@@ -131,7 +138,7 @@ class TaskControlPID(threading.Thread):
 				drv = 50
 			if(drv > 100):
 				drv = 100
-			print "Bar/",latestPressure,"/Target/",cTargetPressure,"/Drv/",drv,"/raw drive/",drive
+#			print "Bar/",latestPressure,"/Target/",cTargetPressure,"/Drv/",drv,"/raw drive/",drive
 			#SSRControl.setPumpPWM( 50 + (drv/2) )
 			#moyenne
 			#drv = (drv + self.m_latestPower + self.m_latestPower2)/3
