@@ -21,6 +21,7 @@ import multithreadTemp
 import multithreadPID
 import multithreadPIDPump
 import multithreadHX711
+import multithreadBTPoids
 
 #Temperature file backup
 TEMPBACKUP = '/home/pi/pirok2/settings.txt'
@@ -63,6 +64,7 @@ barData = readHSR.HSRData(0)
 flowData = readFlow.FlowData()
 pumpPTarget = DEFAULTPUMPVAL
 poidsData = readHSR.HSRData(0)
+poidsBTData = readHSR.HSRData(0)
 
 #tasks
 task1 = multithreadTemp.TaskPrintTemp(0,maximT1)
@@ -70,6 +72,7 @@ task2 = multithreadTemp.TaskPrintTemp(1,maximT2)
 task3 = multithreadHX711.TaskPrintWeight(2,poidsData)
 task4 = multithreadHum.TaskPrintHum(3,dhtData)
 task5 = multithreadRange.TaskPrintRange(4,hsrData)
+#task8 = multithreadBTPoids.TaskPrintWeight2(7,poidsBTData)
 task9 = multithreadADC.TaskPrintBar(8,barData)
 #**** PID setup: *****
 #maximT2 is the group temperature (for boost algorithm), maximT1 is the boiler temp sensor, default target value = 115C
@@ -90,6 +93,7 @@ def quitApplicationNicely():
 	task3.stop()
 	task4.stop()
 	task5.stop()
+#	task8.stop()
 	task9.stop()
 	time.sleep(0.1)
 #	print "now join task 1"
@@ -207,8 +211,9 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
 
 	digole.setFont(fSmall)
 	digole.setFGcolor(cBlanc)
-#	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,tnez)	
-	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,poids)	
+	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,tnez)	
+#	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,poids)	
+#	st=" {0:.1f}b {1:.1f} {2:.1f}+ ".format(bar,poids,tnez)	
 	digole.printTextP(15,120,st)
 
 	#init first line
@@ -335,8 +340,8 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 #	digole.printText2(1,6,stime+" ")
 	digole.printTextP(5,118,stime+" ")
 
-#	st="{0:.1f}+/{1:.0f}a".format(temp,hum)
-	st="{0:.1f}+/{1:.0f}a  ".format(temp,poids)
+	st="{0:.1f}+/{1:.0f}a".format(temp,hum)
+#	st="{0:.1f}+/{1:.0f}a  ".format(temp,poids)
 	digole.setFGcolor(cGris)
 	digole.printTextP(66,118,st)
 #	digole.printText2(1,6,stime+st)
@@ -372,6 +377,7 @@ def startExtractionMode():
 	pumpTimestamp = time.time()
 	#accelere le rythme de pesee / pression / PID
 	#task3.rythmeHaut()
+#	task8.rythmeHaut()
 	task9.rythmeHaut()
 	task7PID.rythmeHaut()
 	#affiche les courbes de pression
@@ -385,6 +391,7 @@ def stopExtractionMode():
 	digole.clearScreen()
 	#reduit le rythme de pesee / pression / PID
 	#task3.rythmeBas()
+#	task8.rythmeBas()
 	task9.rythmeBas()
 	task7PID.rythmeBas()
 	
@@ -414,6 +421,7 @@ task2.start()
 task3.start()
 task4.start()
 task5.start()
+#task8.start()
 task9.start()
 task6PID.start()
 task7PID.start()
@@ -506,7 +514,7 @@ while not done:
 	poids = poidsData.getRange()
 #	if( poids > 50 ):
 #		print strftime("%Y-%m-%d %H:%M:%S", gmtime())," weight on:",poids,"g."
-	if ( poids > 10) and ( poids < 100 ):
+	if poids > 300: #( poids > 10) and ( poids < 100 ):
 		print strftime("%Y-%m-%d %H:%M:%S", gmtime())," weight on:",poids,"g."
 		#if yes, turn on screen
                 screenOnWithTimeout()
@@ -549,7 +557,7 @@ while not done:
 	r5 = hsrData.getRange()
 	b9 = barData.getRange()
 	pumpRate = task7PID.getCurrentDrive()
-	#poids = poidsData.getRange()
+#        poids2 = poidsBTData.getRange()
 	
 	#update the screen
 	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate,pumpPTarget,poids)
