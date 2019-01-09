@@ -45,23 +45,23 @@ class TaskPrintWeight2(threading.Thread):
 	#connection...
 	while not self._stopevent.isSet() and self.isBTNOK:
 		try:
-			print("Connection...")
+#			print("Connection...")
 			#my bluefruit address
 			self.p = Peripheral("EE:1B:17:8F:A4:5D", "random")
 					    #EE:1B:17:8F:A4:5D
-    			print("OK!\ngetCharacteristics")
+#    			print("OK!\ngetCharacteristics")
 			#for ch in self.p.getCharacteristics():
      			#	print str(ch)
     			self.cht = self.p.getCharacteristics(uuid=tempc_uuid)[0]
-			print("Done!")
+#			print("Done!")
 			self.isBTNOK = 0
 
 		except BTLEException as e:
-			print "CONNECT - BTLEException : {0}".format(e)
+#			print "CONNECT - BTLEException : {0}".format(e)
 			self.disconnect()
 
 		except:
-			print 'CONNECT - Other error! ',sys.exc_info()[0]
+#			print 'CONNECT - Other error! ',sys.exc_info()[0]
 			self.disconnect()
 
 		#wait 3 second before try again

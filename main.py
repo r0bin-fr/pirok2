@@ -8,8 +8,10 @@ import signal
 import sys
 from subprocess import call
 from time import gmtime, strftime
+from datetime import datetime as dt
 import mydigole
 import myencoder
+import myplotly
 import random
 import readMaxim
 import readHSR
@@ -66,13 +68,16 @@ pumpPTarget = DEFAULTPUMPVAL
 poidsData = readHSR.HSRData(0)
 poidsBTData = readHSR.HSRData(0)
 
+#plotly data
+myplot = myplotly.MyPlotly(0)
+
 #tasks
 task1 = multithreadTemp.TaskPrintTemp(0,maximT1)
 task2 = multithreadTemp.TaskPrintTemp(1,maximT2)
 task3 = multithreadHX711.TaskPrintWeight(2,poidsData)
 task4 = multithreadHum.TaskPrintHum(3,dhtData)
 task5 = multithreadRange.TaskPrintRange(4,hsrData)
-#task8 = multithreadBTPoids.TaskPrintWeight2(7,poidsBTData)
+task8 = multithreadBTPoids.TaskPrintWeight2(7,poidsBTData)
 task9 = multithreadADC.TaskPrintBar(8,barData)
 #**** PID setup: *****
 #maximT2 is the group temperature (for boost algorithm), maximT1 is the boiler temp sensor, default target value = 115C
@@ -93,7 +98,7 @@ def quitApplicationNicely():
 	task3.stop()
 	task4.stop()
 	task5.stop()
-#	task8.stop()
+	task8.stop()
 	task9.stop()
 	time.sleep(0.1)
 #	print "now join task 1"
@@ -377,7 +382,7 @@ def startExtractionMode():
 	pumpTimestamp = time.time()
 	#accelere le rythme de pesee / pression / PID
 	#task3.rythmeHaut()
-#	task8.rythmeHaut()
+	task8.rythmeHaut()
 	task9.rythmeHaut()
 	task7PID.rythmeHaut()
 	#affiche les courbes de pression
@@ -391,7 +396,7 @@ def stopExtractionMode():
 	digole.clearScreen()
 	#reduit le rythme de pesee / pression / PID
 	#task3.rythmeBas()
-#	task8.rythmeBas()
+	task8.rythmeBas()
 	task9.rythmeBas()
 	task7PID.rythmeBas()
 	
@@ -421,7 +426,7 @@ task2.start()
 task3.start()
 task4.start()
 task5.start()
-#task8.start()
+task8.start()
 task9.start()
 task6PID.start()
 task7PID.start()
@@ -436,6 +441,7 @@ flagTouch=1
 touchTstamp = time.time()
 #init data before loop
 fl = flowData.getFlow()
+plyrefresh = 1
 
 #infinite loop
 while not done:
@@ -557,11 +563,22 @@ while not done:
 	r5 = hsrData.getRange()
 	b9 = barData.getRange()
 	pumpRate = task7PID.getCurrentDrive()
-#        poids2 = poidsBTData.getRange()
+        poids2 = poidsBTData.getRange()
 	
 	#update the screen
 	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate,pumpPTarget,poids)
-    
+	#- stream data online
+	#-- no extration: refresh only each 5 minutes
+	if((dt.now().minute % 5) == 0): 
+		if(plyrefresh):
+			myplot.update(tboil,tnez,t4,h4)
+			plyrefresh=0
+	else:
+		plyrefresh = 1
+	#-- extraction: refresh rate 0.5s with full data
+	if (isPumpRunning):
+		myplot.updateFull(tboil,tnez,t4,h4,b9,pumpPTarget,poids2,fl)
+
     	#only sleep the time we need to respect the clock
     	remainingTimeToSleep = time.time() - timestamp
     	remainingTimeToSleep = SCREEN_UPDATE_TIME - remainingTimeToSleep
