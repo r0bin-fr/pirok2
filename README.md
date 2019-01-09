@@ -4,3 +4,5 @@ Pirok2 is update of Pirok project, with new features such as:
 - rotary command
 - touch detector 
 - pump pressure profiling
+- BT scale
+
