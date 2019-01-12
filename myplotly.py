@@ -13,6 +13,7 @@ from datetime import datetime
 # Class to handle Plotly data for Pirok2!
 #
 class MyPlotly:
+
 	def __init__(self,doinit):
 		#get my streams from config file
 		self.pystream_ids = tls.get_credentials_file()['stream_ids']
@@ -27,6 +28,8 @@ class MyPlotly:
 		stream_token_fl = self.pystream_ids[7]
 		#test date 
 		pyi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+		#backup poids
+		self.oldPoids = 0
 		#layout
 		trace1 = go.Scatter(
     			x=[],
@@ -35,7 +38,8 @@ class MyPlotly:
     			stream=dict(
         			token=stream_token_tboil,
         			maxpoints=10000
-    			)
+    			),
+			yaxis='y4',
 		)
 		trace2 = go.Scatter(
                         x=[],
@@ -44,7 +48,10 @@ class MyPlotly:
                         stream=dict(
                                 token=stream_token_tnez,
                                 maxpoints=10000
-                        )
+                        ),
+			line=dict(
+				shape='spline'
+			)
                 )
 		trace3 = go.Scatter(
                         x=[],
@@ -75,7 +82,10 @@ class MyPlotly:
         			token=stream_token_b9,
         			maxpoints=10000
     	    		),
-    			yaxis='y2'
+    			yaxis='y2',
+			line=dict(
+				shape='spline'
+			)
 		)
 		trace6 = go.Scatter(
                         x=[],
@@ -106,7 +116,23 @@ class MyPlotly:
                                 token=stream_token_fl,
                                 maxpoints=10000
                         ),
+			line=dict(
+				simplify=False
+			),
                         yaxis='y6'
+                )
+		trace9 = go.Scatter(
+                        x=[],
+                        y=[],
+                        name='OutFlow',
+                        stream=dict(
+                                token=self.pystream_ids[8],
+                                maxpoints=10000
+                        ),
+                        line=dict(
+                                simplify=False
+                        ),
+                        yaxis='y3'
                 )
 	
 
@@ -114,7 +140,13 @@ class MyPlotly:
 			title='My coffee shots',
     			yaxis=dict(
         			title='*C',
-				domain=[0.55, 1]
+				domain=[0.55, 1],
+				tickmode='linear',
+        			ticks='outside',
+        			tick0=0,
+        			dtick=1,
+				range=[90,95],
+				rangemode='nonnegative'
     			),
     			yaxis2=dict(
         			title='bar',
@@ -126,27 +158,32 @@ class MyPlotly:
         			),
         			overlaying='y',
         			side='right',
-				domain=[0.55, 1]
+				domain=[0.55, 1],
+				rangemode='nonnegative'
     			),
 			yaxis3=dict(
                                 title='grams',
-				domain=[0.2,0.5]
+				domain=[0.2,0.5],
+				rangemode='nonnegative'
                         ),
 			yaxis4=dict(
                                 title='*C',
-				domain=[0,0.2]
+				domain=[0,0.2],
+				rangemode='nonnegative'
                         ),
                         yaxis5=dict(
                                 title='%hygro',
                                 side='right',
                                 overlaying='y4',
 				layer="below traces",
-                                domain=[0,0.2]
+                                domain=[0,0.2],
+				rangemode='nonnegative'
                         ),
 			yaxis6=dict(
                                 title='flow',
                                 side='right',
                                 overlaying='y3',
+				rangemode='nonnegative'
 #                                layer="below traces",
 #                                domain=[0,0.2]
                         ),
@@ -154,7 +191,7 @@ class MyPlotly:
 		)
 
 		#create figure object
-		fig = Figure(data=[trace1, trace2, trace3, trace4, trace5, trace6, trace7,trace8], layout=layout)
+		fig = Figure(data=[trace1, trace2, trace3, trace4, trace5, trace6, trace7, trace8, trace9], layout=layout)
 
 		#opening streams
 		try:
@@ -178,58 +215,79 @@ class MyPlotly:
         		self.stream_poids2.open()
         		self.stream_fl = py.Stream(stream_token_fl)
         		self.stream_fl.open()
+			self.stream_ofl = py.Stream(self.pystream_ids[8])
+			self.stream_ofl.open()
+			self.mstreams = [self.stream_tboil, self.stream_tnez, self.stream_t4, self.stream_h4, self.stream_b9, self.stream_btarg, self.stream_poids2, self.stream_fl, self.stream_ofl] 
 			print "Plotly streams openned with success!"
 		except Exception as e:
         		print "Plotly STREAMS unexpected error:", sys.exc_info()[0], " e=",repr(e)
 
 	#helper to update plotly streams with try catch 
-	def updateStream(self,st,data):
+	def sub_updateStream(self,st,data,do_hb):
 		#heartbeat to keep stream openned if closed
-		try:
-			st.heartbeat()
-		except:
-			print ""		
+		if(do_hb):
+			try:
+				st.heartbeat()
+			except:
+				print "heartbeat err"		
 		#send data through stream
 		try:
 			st.write(data)
-		except Exception as e:
-                	print "Plotly updateHELPER unexpected error:", sys.exc_info()[0], " e=",repr(e)
+		except Exception as exo:
+                	#print "Plotly updateHELPER unexpected error:", sys.exc_info()[0], " e=",str(exo)
+			#,"\n",repr(e)
+			return -1
+		return 0
+
+	#helper to update plotly streams with retry on error 
+	def updateStream(self,streamId,data,do_hb):
+		st = self.mstreams[streamId]
+		retval = self.sub_updateStream(st,data,do_hb)
+		print "streamid=",streamId," retval=", retval
+		if(retval < 0):
+			#bad stream: close and open again
+			try:
+				try:
+					st.close()
+				except Exception:
+					print ""
+				#reopen
+				
+				self.mstreams[streamId] = py.Stream(self.pystream_ids[streamId])
+				st = self.mstreams[streamId]
+				st.open()
+				retval = self.sub_updateStream(st,data,0)
+				print "close and open, retval=", retval
+			except Exception as exo:
+                        	print "Plotly updateSTREAM unexpected error:", sys.exc_info()[0], " e=",str(exo)
+                        #,"\n",repr(e)
 
 	#- met a jour le graphe (simple, hors extraction)
 	def update(self,tboil,tnez,t4,h4):
-		#if(connected
-		try:
-                        pyi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-			print "tboil"
-			self.updateStream(self.stream_tboil,{'x': pyi, 'y': round(tboil,1) })
-			print "tnez"
-                        self.updateStream(self.stream_tnez,{'x': pyi, 'y': round(tnez,1) })
-			print "h4"
-                        self.updateStream(self.stream_h4,{'x': pyi, 'y': round(h4,1) })
-			print "t4"
-                        self.updateStream(self.stream_t4,{'x': pyi, 'y':  round(t4,1) })
-			print "update success"
-                except Exception as e:
-                        print "Plotly updateSMALL unexpected error:", sys.exc_info()[0], " e=",repr(e)
+                pyi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+		self.updateStream(0,{'x': pyi, 'y': round(tboil,1) },1)
+                self.updateStream(1,{'x': pyi, 'y': round(tnez,1) },1)
+                self.updateStream(2,{'x': pyi, 'y': round(h4,1) },1)
+                self.updateStream(3,{'x': pyi, 'y':  round(t4,1) },1)
 
 	#- met a jour le graphe lors de l'extraction
 	def updateFull(self,tboil,tnez,t4,h4,b9,pumpPTarget,poids2,fl):
-		try:
-                        pyi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-			self.updateStream(self.stream_tboil,{'x': pyi, 'y': round(tboil,1) })
-			self.updateStream(self.stream_tnez,{'x': pyi, 'y': round(tnez,1) })
-			self.updateStream(self.stream_h4,{'x': pyi, 'y': round(h4,1) })
-			self.updateStream(self.stream_t4,{'x': pyi, 'y': round(t4,1) })
-			self.updateStream(self.stream_b9,{'x': pyi, 'y': round(b9, 1) })
-                        self.updateStream(self.stream_btarg,{'x': pyi, 'y': pumpPTarget })
-			if(poids2 > 100):
-				poids2 = 100
-			if(poids2 < 0):
-				poids2 = 0
-                        self.updateStream(self.stream_poids2,{'x': pyi, 'y': round(poids2,1) })
-			if(fl > 30):
-				fl = 30
-                        self.updateStream(self.stream_fl,{'x': pyi, 'y': round(fl,1) })
-                except Exception as e:
-                        print "Plotly UpdateFULL unexpected error:", sys.exc_info()[0], " e=",repr(e)
+                pyi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+		self.updateStream(0,{'x': pyi, 'y': round(tboil,1) },0)
+		self.updateStream(1,{'x': pyi, 'y': round(tnez,1) },0)
+		self.updateStream(2,{'x': pyi, 'y': round(h4,1) },0)
+		self.updateStream(3,{'x': pyi, 'y': round(t4,1) },0)
+		self.updateStream(4,{'x': pyi, 'y': round(b9, 1) },0)
+                self.updateStream(5,{'x': pyi, 'y': pumpPTarget },0)
+		if(poids2 > 100):
+			poids2 = 100
+		if(poids2 < 0):
+			poids2 = 0
+                self.updateStream(6,{'x': pyi, 'y': round(poids2,1) },0)
+		if(fl > 30):
+			fl = 30
+                self.updateStream(7,{'x': pyi, 'y': round(fl,1) },0)
+                #compute output flow based on weight
+		self.updateStream(8,{'x': pyi, 'y': round((poids2 - self.oldPoids),1) },0)
+		self.oldPoids = poids2
 

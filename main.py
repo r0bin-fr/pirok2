@@ -569,7 +569,7 @@ while not done:
 	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate,pumpPTarget,poids)
 	#- stream data online
 	#-- no extration: refresh only each 5 minutes
-	if((dt.now().minute % 5) == 0): 
+	if((dt.now().minute % 2) == 0): 
 		if(plyrefresh):
 			myplot.update(tboil,tnez,t4,h4)
 			plyrefresh=0
