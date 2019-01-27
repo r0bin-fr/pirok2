@@ -99,10 +99,10 @@ class TaskControlPID(threading.Thread):
                 	except ValueError:
                         	print "Error conversion, NaN"
 #                	print "Entered:",s," cP=",cP," cI=",cI," cD=",cD
-			print "***********************************************************"
-			print "oldP=",self.m_pGain,"oldI=",self.m_iGain,"oldD=",self.m_dGain
-                	print "newcP=",cP," cI=",cI," cD=",cD
-			print "***********************************************************"
+#			print "***********************************************************"
+#			print "oldP=",self.m_pGain,"oldI=",self.m_iGain,"oldD=",self.m_dGain
+#                	print "newcP=",cP," cI=",cI," cD=",cD
+#			print "***********************************************************"
 			self.m_pGain = cP
 			self.m_iGain = cI
 			self.m_dGain = cD
@@ -138,7 +138,28 @@ class TaskControlPID(threading.Thread):
 				drv = 50
 			if(drv > 100):
 				drv = 100
-#			print "Bar/",latestPressure,"/Target/",cTargetPressure,"/Drv/",drv,"/raw drive/",drive
+			#reduce pump power at lower pressures when going up
+			if((cTargetPressure < 11) and (cTargetPressure > latestPressure)):
+				if(cTargetPressure == 10):
+					maxdrive=50+25
+				if(cTargetPressure == 9):
+                                        maxdrive=50+22
+				if(cTargetPressure == 8):
+                                        maxdrive=50+19
+				if(cTargetPressure < 8):
+					maxdrive= 50+(cTargetPressure+(cTargetPressure+1))
+				#SANS CAFE
+				#target=4 max=7
+				#target=5 max=8
+				#target=6 max=9
+				#target=7 max=10
+				#target=8 max=12
+				#target=9 max=15
+				#target=10 max=20
+				if(drv > maxdrive):
+	                                drv = maxdrive
+
+			print "Bar/",latestPressure,"/Target/",cTargetPressure,"/Real drv% to SSR/",drv,"/raw drive/",drive
 			#SSRControl.setPumpPWM( 50 + (drv/2) )
 			#moyenne
 			#drv = (drv + self.m_latestPower + self.m_latestPower2)/3
