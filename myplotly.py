@@ -37,7 +37,7 @@ class MyPlotly:
     			name='T chaudiere',
     			stream=dict(
         			token=stream_token_tboil,
-        			maxpoints=10000
+        			maxpoints=2000
     			),
 			yaxis='y4',
 		)
@@ -47,7 +47,7 @@ class MyPlotly:
                         name='T extraction',
                         stream=dict(
                                 token=stream_token_tnez,
-                                maxpoints=10000
+                                maxpoints=2000
                         ),
 			line=dict(
 				shape='spline'
@@ -59,7 +59,7 @@ class MyPlotly:
                         name='T cuisine',
                         stream=dict(
                                 token=stream_token_t4,
-                                maxpoints=10000
+                                maxpoints=2000
                         ),
                         yaxis='y4'
                 )
@@ -69,7 +69,7 @@ class MyPlotly:
                         name='Hygro cuisine',
                         stream=dict(
                                 token=stream_token_h4,
-                                maxpoints=10000
+                                maxpoints=2000
                         ),
 			#opacity=0.4,
                         yaxis='y5'
@@ -80,7 +80,7 @@ class MyPlotly:
 		    	name='Pression extraction',
 	    		stream=dict(
         			token=stream_token_b9,
-        			maxpoints=10000
+        			maxpoints=2000
     	    		),
     			yaxis='y2',
 			line=dict(
@@ -93,7 +93,7 @@ class MyPlotly:
                         name='Pression consigne',
                         stream=dict(
                                 token=stream_token_btarg,
-                                maxpoints=10000
+                                maxpoints=2000
                         ),
                         yaxis='y2'
                 )
@@ -103,7 +103,7 @@ class MyPlotly:
                         name='Poids shot',
                         stream=dict(
                                 token=stream_token_poids2,
-                                maxpoints=10000
+                                maxpoints=2000
                         ),
 			opacity=0.4,
                         yaxis='y3'
@@ -114,7 +114,7 @@ class MyPlotly:
                         name='Flow',
                         stream=dict(
                                 token=stream_token_fl,
-                                maxpoints=10000
+                                maxpoints=2000
                         ),
 			line=dict(
 				simplify=False
@@ -127,7 +127,7 @@ class MyPlotly:
                         name='OutFlow',
                         stream=dict(
                                 token=self.pystream_ids[8],
-                                maxpoints=10000
+                                maxpoints=2000
                         ),
                         line=dict(
                                 simplify=False
@@ -164,6 +164,7 @@ class MyPlotly:
 			yaxis3=dict(
                                 title='grams',
 				domain=[0.2,0.5],
+				range=[0,25],
 				rangemode='nonnegative'
                         ),
 			yaxis4=dict(
@@ -183,7 +184,8 @@ class MyPlotly:
                                 title='flow',
                                 side='right',
                                 overlaying='y3',
-				rangemode='nonnegative'
+				rangemode='nonnegative',
+				range=[0,14],
 #                                layer="below traces",
 #                                domain=[0,0.2]
                         ),
@@ -267,16 +269,16 @@ class MyPlotly:
                 pyi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 		self.updateStream(0,{'x': pyi, 'y': round(tboil,1) },1)
                 self.updateStream(1,{'x': pyi, 'y': round(tnez,1) },1)
-                self.updateStream(2,{'x': pyi, 'y': round(h4,1) },1)
-                self.updateStream(3,{'x': pyi, 'y':  round(t4,1) },1)
+                self.updateStream(2,{'x': pyi, 'y': round(t4,1) },1)
+                self.updateStream(3,{'x': pyi, 'y':  round(h4,1) },1)
 
 	#- met a jour le graphe lors de l'extraction
 	def updateFull(self,tboil,tnez,t4,h4,b9,pumpPTarget,poids2,fl):
-                pyi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                pyi = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 		self.updateStream(0,{'x': pyi, 'y': round(tboil,1) },0)
 		self.updateStream(1,{'x': pyi, 'y': round(tnez,1) },0)
-		self.updateStream(2,{'x': pyi, 'y': round(h4,1) },0)
-		self.updateStream(3,{'x': pyi, 'y': round(t4,1) },0)
+		self.updateStream(2,{'x': pyi, 'y': round(t4,1) },0)
+		self.updateStream(3,{'x': pyi, 'y': round(h4,1) },0)
 		self.updateStream(4,{'x': pyi, 'y': round(b9, 1) },0)
                 self.updateStream(5,{'x': pyi, 'y': pumpPTarget },0)
 		if(poids2 > 100):
@@ -288,6 +290,6 @@ class MyPlotly:
 			fl = 30
                 self.updateStream(7,{'x': pyi, 'y': round(fl,1) },0)
                 #compute output flow based on weight
-		self.updateStream(8,{'x': pyi, 'y': round((poids2 - self.oldPoids),1) },0)
+		self.updateStream(8,{'x': pyi, 'y': round((poids2 - self.oldPoids)*5,1) },0)
 		self.oldPoids = poids2
 
