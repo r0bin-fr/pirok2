@@ -109,7 +109,7 @@ def quitApplicationNicely():
 #	print "now join task 1"
 #	task1.join()
 	print "now exit"
-    	sys.exit(0)
+	sys.exit(0)
 
 #signal handler
 def signal_handler(signal, frame):
@@ -119,17 +119,17 @@ def signal_handler(signal, frame):
 def getTempTarget(): 
 	print "getTemp"
 	try:
-                tfile = open(TEMPBACKUP, "r")
-                line = tfile.readline()
-                tfile.close()
+		tfile = open(TEMPBACKUP, "r")
+		line = tfile.readline()
+		tfile.close()
 		#conversion en entier
 		ttarget = int(line)
  	except IOError as e:
 		print "Erreur fichier ", TEMPBACKUP," (ouverture, lecture ou fermeture)"
-                print "I/O error({0}): {1}".format(e.errno, e.strerror)
+		print "I/O error({0}): {1}".format(e.errno, e.strerror)
 		ttarget = 0
-        except:
-                print "Erreur fichier ", TEMPBACKUP," (ouverture, lecture ou fermeture)", sys.exc_info()[0]
+	except:
+		print "Erreur fichier ", TEMPBACKUP," (ouverture, lecture ou fermeture)", sys.exc_info()[0]
 		ttarget = 0
 	return ttarget
 
@@ -150,7 +150,7 @@ def loadSettings():
 def saveSettings():
 	#recuperation de la consigne reelle
 	if(consigneBoost == 1):
-        	temptosave = lastTargetTemp	
+		temptosave = lastTargetTemp	
 	else:
 		temptosave = temptarget
 	#a-t-on vraiment besoin d'ecrire dans la flash? (abime)
@@ -163,14 +163,14 @@ def saveSettings():
 	buf = buf + "\n"
 	print "Saving temptarget", buf, "ok?"
 	try:
-                tfile = open(TEMPBACKUP, "w")
-                tfile.write(buf)
-                tfile.close()
+		tfile = open(TEMPBACKUP, "w")
+		tfile.write(buf)
+		tfile.close()
  	except IOError as e:
 		print "Erreur fichier ", TEMPBACKUP," (ouverture, lecture ou fermeture)"
-                print "I/O error({0}): {1}".format(e.errno, e.strerror)
-        except:
-                print "Erreur fichier ", TEMPBACKUP," (ouverture, lecture ou fermeture)", sys.exc_info()[0]
+		print "I/O error({0}): {1}".format(e.errno, e.strerror)
+	except:
+		print "Erreur fichier ", TEMPBACKUP," (ouverture, lecture ou fermeture)", sys.exc_info()[0]
 
 #translate water range into value to display
 def getWLvalue(range):
@@ -183,8 +183,9 @@ def getWLvalue(range):
 #	print "Range = ",rpercent * 100,"% -val=",int(rpercent * 6)
 	return int(rpercent * 6)
 
-
-#Graph for extraction
+#---------------------------
+#-- Graph for extraction ---
+#---------------------------
 ext_rang = 0
 graphTX = 0
 graphTY = 0
@@ -192,7 +193,20 @@ graphRX=0
 graphRY=0
 COL_X = 1
 COL_Y = 110
-def init_graph():
+
+#Weight total bars during extraction
+#Blue bars are drawn first, pressure graph is drawn over them.
+WEIGHT_TOTAL_TARGET = 40.0      # grams for full-height bar
+WEIGHT_BAR_X_MIN = COL_X + 2
+WEIGHT_BAR_X_MAX = 159
+WEIGHT_BAR_Y_TOP = 0
+WEIGHT_BAR_Y_BASE = COL_Y - 1
+WEIGHT_BAR_WIDTH = 2
+WEIGHT_BAR_SPACE = 1
+WEIGHT_BAR_MAX_COUNT = 52
+weightTotalHistory = []
+
+def init_graph_extraction():
 	global ext_rang 
 	global graphTX
 	ext_rang= COL_X+1
@@ -213,12 +227,94 @@ def init_graph():
 		digole.drawLine(j,COL_Y+1,j,COL_Y+2)
 		j=j+10
 	#non-GUI settings for extraction control
-	
+
+def reset_weight_total_bars():
+	global weightTotalHistory
+
+	#Called at the beginning of each extraction.
+	#Since the HX711 is tared at extraction start, history must restart from zero.
+	weightTotalHistory = []
+
+
+def update_weight_total_bars(currentWeight):
+	global weightTotalHistory
+
+	#Safety against HX711 negative noise.
+	if currentWeight < 0:
+		currentWeight = 0.0
+
+	#Cap the value so bars do not exceed the graph height.
+	if currentWeight > WEIGHT_TOTAL_TARGET:
+		currentWeight = WEIGHT_TOTAL_TARGET
+
+	#Store total weight for this refresh.
+	weightTotalHistory.append(currentWeight)
+
+	#Keep only the last visible bars.
+	if len(weightTotalHistory) > WEIGHT_BAR_MAX_COUNT:
+		weightTotalHistory.pop(0)
+
+
+def draw_weight_total_bars():
+	#No need to clear here if ihm_extraction() already clears the full screen.
+	#This function only draws the blue weight layer.
+
+	digole.setFGcolor(cBleu)
+
+	i = 0
+	for w in weightTotalHistory:
+		ratio = w / WEIGHT_TOTAL_TARGET
+
+		if ratio < 0:
+			ratio = 0
+		if ratio > 1:
+			ratio = 1
+
+		#Convert total weight into bar height.
+		barHeight = int(ratio * (WEIGHT_BAR_Y_BASE - WEIGHT_BAR_Y_TOP))
+
+		if barHeight > 0:
+			x1 = WEIGHT_BAR_X_MIN + i * (WEIGHT_BAR_WIDTH + WEIGHT_BAR_SPACE)
+			y1 = WEIGHT_BAR_Y_BASE - barHeight
+			x2 = x1 + WEIGHT_BAR_WIDTH
+			y2 = WEIGHT_BAR_Y_BASE
+
+			if x1 <= WEIGHT_BAR_X_MAX:
+				digole.fillRect(x1, y1, x2, y2)
+
+		i = i + 1
+
+
+def redraw_extraction_axes():
+	#Draw pressure graph axes over the blue weight bars.
+	digole.setFGcolor(cBlanc)
+	digole.drawLine(COL_X,0,COL_X,COL_Y+1)
+	digole.drawLine(COL_X,COL_Y,160,COL_Y)
+	digole.drawLine(COL_X,COL_Y+1,160,COL_Y+1)
+
+def draw_extraction_axes():
+	# Draw pressure graph axes.
+	# This is called at each refresh because the screen is cleared.
+	digole.setFGcolor(cBlanc)
+
+	# Y axis
+	digole.drawLine(COL_X, 0, COL_X, COL_Y + 1)
+
+	# X axis, drawn thicker with two lines
+	digole.drawLine(COL_X, COL_Y, 160, COL_Y)
+	digole.drawLine(COL_X, COL_Y + 1, 160, COL_Y + 1)
 
 def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids):
 	global ext_rang
 	global graphTX,graphTY,graphRX,graphRY
 
+	#1. Update total weight history.
+	update_weight_total_bars(poids)
+	#2. Draw blue total-weight bars as background.
+	draw_weight_total_bars()
+	#3. Redraw axes above the blue bars.
+	redraw_extraction_axes()
+	
 	digole.setFont(fSmall)
 	digole.setFGcolor(cBlanc)
 	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,tnez)	
@@ -240,7 +336,8 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
 	digole.setFGcolor(cRouge)
 	digole.drawLine(graphTX,graphTY,ext_rang,(COL_Y-(pumpPTarget*10)))
 	#draw current pressure
-	digole.setFGcolor(cBleu)
+#	digole.setFGcolor(cBleu)
+	digole.setFGcolor(cVert)
 	digole.drawLine(graphRX,graphRY,ext_rang,(COL_Y-(int(bar*10))))
 
 	#backup coords
@@ -251,7 +348,7 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
 	#increment x
 	ext_rang = ext_rang + 2
 	if(ext_rang > 160):
-		init_graph()
+		init_graph_extraction()
 
 
 def ihm_extraction_old(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget):
@@ -339,8 +436,8 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 #	st="{0:.1f}".format(poids)
 	digole.printTextP(50,80,str(st)+"+ ")
 
-    	#get the current time
-    	if(int(time.time())%2 == 0):    
+	#get the current time
+	if(int(time.time())%2 == 0):   
 		stime=time.strftime('%H.%M')
 	else:
 		stime=time.strftime('%H\'%M')
@@ -371,19 +468,19 @@ def screenOnWithTimeout():
 	global digole,flagTouch,touchTstamp,cBlanc
 	digole.setScreen(1)
 #	digole.setDrawDir(2)
-        flagTouch=1
-        touchTstamp = time.time()
+	flagTouch=1
+	touchTstamp = time.time()
 	cBlanc = OLED_WHITE_STD
 	digole.setBL(BL_STD)
 
 #screen off, timeout disabled
 def screenOffNow():
 	global digole,flagTouch,cBlanc
-        digole.setScreen(0)
-        digole.clearScreen()
+	digole.setScreen(0)
+	digole.clearScreen()
 	#digole.setDrawDir(2)
 	digole.setOLEDOFF()
-        flagTouch=0
+	flagTouch=0
 	cBlanc = OLED_WHITE_STD
 	digole.setBL(BL_STD)
 
@@ -392,14 +489,18 @@ def startExtractionMode():
 	global pumpTimestamp, task3, task9,task7PID
 	print "startExtractionMode"
 	pumpTimestamp = time.time()
+	
 	#accelere le rythme de pesee / pression / PID
 	task3.rythmeHaut()
 	task3.met_a_zero()
+	#Reset total weight bars after HX711 tare.
+	reset_weight_total_bars()
+	
 	task8.rythmeHaut()
 	task9.rythmeHaut()
 	task7PID.rythmeHaut()
 	#affiche les courbes de pression
-	init_graph()
+   	init_graph_extraction()
 	print "startExtractionMode2"
 
 #stop extraction mode
@@ -428,7 +529,7 @@ def check_boost_timeout():
  				consigneBoost = 0
  				boostTimestamp = 0.0
 				#apply settings immediately
-	                        task6PID.setTargetTemp(temptarget)
+				task6PID.setTargetTemp(temptarget)
 
 # -------------------------------------------------------
 # ------------------- Main Program Loop -----------------
@@ -460,7 +561,7 @@ task2.start()
 task3.start()
 task4.start()
 task5.start()
-task8.start()
+#task8.start()
 task9.start()
 task6PID.start()
 task7PID.start()
@@ -480,9 +581,9 @@ plyrefresh = 1
 #infinite loop
 while not done:
 	#try to respect as much as possible the time slot
-    	timestamp = time.time()
+	timestamp = time.time()
 
-	#get flow update
+	#get flow update	
 	fl = flowData.getFlow()
 	#print "flow=",fl
 	if(fl > 0.0):
@@ -514,16 +615,16 @@ while not done:
 			task7PID.setTargetPressure(pumpPTarget)
 
 	#get touch update
-        if encoder.get_bTouched():
-        	print "Touche!"
-		if flagTouch:
+		if encoder.get_bTouched():
+			print "Touche!"
+		#if flagTouch:
 			#prevent multi touch: wait 2 seconds before screen off
-			if(timestamp - touchTstamp > 2):
-				screenOffNow()
+		#	if(timestamp - touchTstamp > 2):
+		#		screenOffNow()
 			#if touched during fadeoff, power on again
-			if (timestamp - touchTstamp) >= (OLED_TIMEOUT - OLED_FADE_TIMEOUT):
-				screenOnWithTimeout()
-		else:
+		#	if (timestamp - touchTstamp) >= (OLED_TIMEOUT - OLED_FADE_TIMEOUT):
+		#		screenOnWithTimeout()
+		#else:
 			screenOnWithTimeout()
 
 	#timeout on screen ON
@@ -540,11 +641,11 @@ while not done:
 	check_boost_timeout()
 
 	#get switch update
-    	if encoder.get_bPushed():
+	if encoder.get_bPushed():
 		if flagTouch == 0:
 			screenOnWithTimeout()
 		else:
-	        	#if screen is on, apply boost mode
+				#if screen is on, apply boost mode
 			screenOnWithTimeout()
 			#were we already in boost mode?
 			if(consigneBoost == 0):
@@ -581,19 +682,19 @@ while not done:
 		if poids > 300: #( poids > 10) and ( poids < 100 ):
 			#print strftime("%Y-%m-%d %H:%M:%S", gmtime())," weight on:",poids,"g."
 			#if yes, turn on screen
-                	screenOnWithTimeout()
+			screenOnWithTimeout()
 			#reset balance
 			task3.met_a_zero()			
 	
 	#is BT weight sensor connected? if yes the screen is ON
 	if (task8.isNotConnected() == 0):
-#                print strftime("%Y-%m-%d %H:%M:%S", gmtime())," screen on with BT!"
+#				print strftime("%Y-%m-%d %H:%M:%S", gmtime())," screen on with BT!"
 		screenOnWithTimeout()	
 
 	#get encoder updates
 	delta = encoder.get_cycles()
 	#did we turn the encoder?
-    	if delta!=0:
+	if delta!=0:
 		if flagTouch==0:
  			#turn on screen only
 			screenOnWithTimeout()
@@ -631,7 +732,7 @@ while not done:
 	r5 = hsrData.getRange()
 	b9 = barData.getRange()
 	pumpRate = task7PID.getCurrentDrive()
-        poids2 = poidsBTData.getRange()
+	poids2 = poidsBTData.getRange()
 	
 	#update the screen
 	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate,pumpPTarget,poids)
@@ -647,12 +748,12 @@ while not done:
 	#if (isPumpRunning):
 	#	myplot.updateFull(tboil,tnez,t4,h4,b9,pumpPTarget,poids2,fl)
 
-    	#only sleep the time we need to respect the clock
-    	remainingTimeToSleep = time.time() - timestamp
-    	remainingTimeToSleep = SCREEN_UPDATE_TIME - remainingTimeToSleep
-    	if(remainingTimeToSleep > 0):
+	#only sleep the time we need to respect the clock
+	remainingTimeToSleep = time.time() - timestamp
+	remainingTimeToSleep = SCREEN_UPDATE_TIME - remainingTimeToSleep
+	if(remainingTimeToSleep > 0):
 #		print "time to sleep=",remainingTimeToSleep
-       		time.sleep(remainingTimeToSleep)
+		time.sleep(remainingTimeToSleep)
 
 	   
 #end the tasks nicely
