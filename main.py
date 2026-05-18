@@ -194,6 +194,11 @@ graphRY=0
 COL_X = 1
 COL_Y = 110
 
+#Pressure graph protection
+PRESSURE_GRAPH_MAX_BAR = 12.0       # top of graph = 12 bar
+PRESSURE_MAX_DISPLAY_JUMP = 3.5     # max displayed jump between two refreshes
+lastDisplayedBar = 0.0
+
 #Total weight blue bars during extraction
 #Each refresh draws only one new bar at the current graph X position.
 #Pressure is drawn immediately after, over the blue bar.
@@ -201,14 +206,41 @@ WEIGHT_TOTAL_TARGET = 40.0      # grams corresponding to full graph height
 WEIGHT_BAR_Y_TOP = 0
 WEIGHT_BAR_Y_BASE = COL_Y - 1
 WEIGHT_BAR_WIDTH = 2
+#HX711 tare protection at extraction start
+#After task3.met_a_zero(), the HX711 thread may need a few cycles
+#before publishing the new zeroed value.
+WEIGHT_TARE_SETTLE_TIME = 0.8
+#If the first value after tare is still high, use it as visual baseline
+#so the graph starts at zero instead of starting at cup weight.
+WEIGHT_TARE_BASELINE_THRESHOLD = 5.0
+#If HX711 later drops well below the temporary baseline,
+#follow it down because the tare probably finally caught up.
+WEIGHT_TARE_BASELINE_DROP = 3.0
+weightTareTimestamp = 0.0
+weightGraphBaseline = 0.0
+weightGraphBaselineSet = 0
 
-def init_graph_extraction():
+def init_graph_extraction(currentBar=0.0):
 	global ext_rang 
 	global graphTX
-	ext_rang= COL_X+1
-	graphTX=-1
+	global graphTY
+	global graphRX
+	global graphRY
+	global lastDisplayedBar
+
+	ext_rang = COL_X + 1
+	graphTX = -1
+	graphTY = 0
+	graphRX = -1
+	graphRY = 0
+
+	# Start displayed pressure from the real current pressure,
+	# not from zero.
+	lastDisplayedBar = clamp_pressure_value(currentBar)
+
 	digole.clearScreen()
 	digole.setFGcolor(cBlanc)
+
 	#AXES
 	digole.drawLine(COL_X,0,COL_X,COL_Y+1)
 	digole.drawLine(COL_X,COL_Y,160,COL_Y)
@@ -223,6 +255,46 @@ def init_graph_extraction():
 		digole.drawLine(j,COL_Y+1,j,COL_Y+2)
 		j=j+10
 	#non-GUI settings for extraction control
+
+
+def get_weight_for_graph(poids):
+	global weightGraphBaseline
+	global weightGraphBaselineSet
+
+	#During tare pending, force graph weight to zero.
+	#This avoids drawing the first blue bars with the pre-tare cup weight.
+	if weightTareTimestamp > 0:
+		if (time.time() - weightTareTimestamp) < WEIGHT_TARE_SETTLE_TIME:
+			return 0.0
+
+	#Safety against negative HX711 values.
+	if poids < 0:
+		poids = 0.0
+
+	#First value after tare delay:
+	#if it is still high, it is probably a pre-tare or delayed value.
+	#Use it as a temporary visual baseline.
+	if weightGraphBaselineSet == 0:
+		if poids > WEIGHT_TARE_BASELINE_THRESHOLD:
+			weightGraphBaseline = poids
+		else:
+			weightGraphBaseline = 0.0
+
+		weightGraphBaselineSet = 1
+
+	#If baseline was high and HX711 tare finally catches up,
+	#reset baseline down to the new lower value.
+	if weightGraphBaseline > 0:
+		if poids < (weightGraphBaseline - WEIGHT_TARE_BASELINE_DROP):
+			weightGraphBaseline = poids
+
+	poidsGraph = poids - weightGraphBaseline
+
+	if poidsGraph < 0:
+		poidsGraph = 0.0
+
+	return poidsGraph
+
 
 def draw_weight_total_bar(x, currentWeight):
     #Draw one blue background bar representing total extracted weight.
@@ -261,13 +333,92 @@ def draw_weight_total_bar(x, currentWeight):
     digole.setFGcolor(cBleu)
     digole.fillRect(x1, y1, x2, y2)
 
+def clamp_pressure_value(bar):
+	#Keep pressure inside display range.
+	if bar < 0:
+		bar = 0.0
+
+	if bar > PRESSURE_GRAPH_MAX_BAR:
+		bar = PRESSURE_GRAPH_MAX_BAR
+
+	return bar
+
+
+def pressure_to_y(bar):
+	#Convert pressure in bar to graph Y coordinate.
+	#0 bar is at COL_Y, PRESSURE_GRAPH_MAX_BAR is at the top.
+	bar = clamp_pressure_value(bar)
+
+	ratio = bar / PRESSURE_GRAPH_MAX_BAR
+
+	if ratio < 0:
+		ratio = 0
+	if ratio > 1:
+		ratio = 1
+
+	return int(COL_Y - (ratio * COL_Y))
+
+
+def get_filtered_display_bar(bar):
+	global lastDisplayedBar
+
+	#Clamp first, so the display never tries to draw outside the graph.
+	bar = clamp_pressure_value(bar)
+
+	#Avoid crazy visual spikes.
+	#This protects only the displayed curve, not the real PID value.
+	if abs(bar - lastDisplayedBar) > PRESSURE_MAX_DISPLAY_JUMP:
+		if bar > lastDisplayedBar:
+			bar = lastDisplayedBar + PRESSURE_MAX_DISPLAY_JUMP
+		else:
+			bar = lastDisplayedBar - PRESSURE_MAX_DISPLAY_JUMP
+
+	lastDisplayedBar = bar
+	return bar
+
+
+def draw_pressure_graph_segment(bar, pumpPTarget):
+	global ext_rang
+	global graphTX, graphTY
+	global graphRX, graphRY
+
+	#Use protected values for display.
+	displayBar = get_filtered_display_bar(bar)
+	displayTarget = clamp_pressure_value(pumpPTarget)
+
+	targetY = pressure_to_y(displayTarget)
+	barY = pressure_to_y(displayBar)
+
+	#Init first point.
+	if(graphTX == -1):
+		graphTX = ext_rang
+		graphTY = targetY
+		graphRX = ext_rang
+		graphRY = barY
+		return
+
+	#Draw target pressure.
+	digole.setFGcolor(cRouge)
+	digole.drawLine(graphTX, graphTY, ext_rang, targetY)
+
+	#Draw current pressure over the blue weight bar.
+	digole.setFGcolor(cVert)
+	digole.drawLine(graphRX, graphRY, ext_rang, barY)
+
+	#Backup coords for next refresh.
+	graphTX = ext_rang
+	graphTY = targetY
+	graphRX = ext_rang
+	graphRY = barY
+
 def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids):
 	global ext_rang
 	global graphTX,graphTY,graphRX,graphRY
 
-    #Draw only the new blue weight bar at current X position.
-    #Pressure graph will be drawn just after, so it remains visible over the bar.
-    draw_weight_total_bar(ext_rang, poids)
+	#Draw only the new blue weight bar at current X position.
+    	#Pressure graph will be drawn just after, so it remains visible over the bar.
+	poidsForGraph = get_weight_for_graph(poids)
+	draw_weight_total_bar(ext_rang, poidsForGraph)
 
 	digole.setFont(fSmall)
 	digole.setFGcolor(cBlanc)
@@ -276,33 +427,16 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
 #	st=" {0:.1f}b {1:.1f} {2:.1f}+ ".format(bar,poids,tnez)	
 	digole.printTextP(15,120,st)
 	
-	st=" {0:.1f} ".format(poids)
+	st=" {0:.1f} ".format(poidsForGraph)
 	digole.printTextP(15,25,st)
 
-	#init first line
-	if(graphTX == -1):
-		graphTX=ext_rang
-		graphTY=(COL_Y-(pumpPTarget*10))
-		graphRX=ext_rang
-		graphRY=(COL_Y-(pumpPTarget*10))
+	#Draw protected pressure graph over the blue weight bar.
+	draw_pressure_graph_segment(bar, pumpPTarget)
 
-	#draw target
-	digole.setFGcolor(cRouge)
-	digole.drawLine(graphTX,graphTY,ext_rang,(COL_Y-(pumpPTarget*10)))
-	#draw current pressure
-#	digole.setFGcolor(cBleu)
-	digole.setFGcolor(cVert)
-	digole.drawLine(graphRX,graphRY,ext_rang,(COL_Y-(int(bar*10))))
-
-	#backup coords
-	graphTX=ext_rang
-	graphRX=ext_rang
-	graphTY=(COL_Y-(pumpPTarget*10))
-	graphRY=(COL_Y-(int(bar*10)))
 	#increment x
 	ext_rang = ext_rang + 2
 	if(ext_rang > 160):
-		init_graph_extraction()
+		init_graph_extraction(bar)
 
 
 def ihm_extraction_old(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget):
@@ -447,12 +581,16 @@ def startExtractionMode():
 	#accelere le rythme de pesee / pression / PID
 	task3.rythmeHaut()
 	task3.met_a_zero()
+	#After HX711 tare, protect the graph from old/pre-tare values.
+	weightTareTimestamp = time.time()
+	weightGraphBaseline = 0.0
+	weightGraphBaselineSet = 0
 	
 	task8.rythmeHaut()
 	task9.rythmeHaut()
 	task7PID.rythmeHaut()
 	#affiche les courbes de pression
-   	init_graph_extraction()
+   	init_graph_extraction(barData.getRange())
 	print "startExtractionMode2"
 
 #stop extraction mode

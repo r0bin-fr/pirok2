@@ -15,6 +15,7 @@ PIROK_NBPES = 9
 MAX_JUMP = 80.0  # variation max plausible en grammes entre deux lectures
 PIROK_RYTHM_BAS = 0.5
 PIROK_RYTHM_HAUT = 0.25
+MAX_BIG_JUMP_REPEAT = 3 
 
 class TaskPrintWeight(threading.Thread):
 
@@ -23,8 +24,10 @@ class TaskPrintWeight(threading.Thread):
         self.taskid = taskid
         self._stopevent = threading.Event( )
         self.mData = mData
-        self.tempo = PIROK_RYTHM_BAS
-        #mutex to protect concurrent access to chipset
+	self.tempo = PIROK_RYTHM_BAS 
+	self.bigJumpCount = 0 
+	self.bigJumpCandidate = None
+	#mutex to protect concurrent access to chipset
         self.lok = threading.Lock()
         self.pbassinelle = 0.0
         self.ratio = PIROK_RATIO
@@ -60,20 +63,60 @@ class TaskPrintWeight(threading.Thread):
 
 
     def filtre_valeur(self, val):
-        if self.last_valid is None:
-            self.last_valid = val
-            return val
+#"""
+#    Filtre les valeurs HX711.
+#    Rejette les gros sauts isolés, mais accepte un gros changement
+#    s'il persiste plusieurs lectures.
+#    """
 
-        if abs(val - self.last_valid) > MAX_JUMP:
-            print "valeur HX711 aberrante rejetee:", val, "ancienne:", self.last_valid
-            return self.last_valid
+	if not hasattr(self, 'bigJumpCandidate'):
+		self.bigJumpCandidate = None
+		self.bigJumpCount = 0
 
-        self.last_valid = val
-        return val
+	delta = abs(val - self.pbassinelle)
+
+	# Variation normale : on accepte.
+	if delta <= MAX_JUMP:
+		self.pbassinelle = val
+		self.bigJumpCandidate = None
+		self.bigJumpCount = 0
+		return val
+
+	# Gros saut : on vérifie s'il ressemble au précédent candidat.
+	if self.bigJumpCandidate is not None:
+		candidateDelta = abs(val - self.bigJumpCandidate)
+	else:
+		candidateDelta = MAX_JUMP + 1
+
+	if self.bigJumpCandidate is not None and candidateDelta <= MAX_JUMP:
+		self.bigJumpCount = self.bigJumpCount + 1
+	else:
+ 		self.bigJumpCandidate = val
+		self.bigJumpCount = 1
+
+	# Le gros saut persiste : on accepte la nouvelle zone de poids.
+	if self.bigJumpCount >= MAX_BIG_JUMP_REPEAT:
+		print "gros changement HX711 accepte apres repetition:", val, "ancienne:", self.pbassinelle
+
+		self.pbassinelle = val
+		self.bigJumpCandidate = None
+		self.bigJumpCount = 0
+		return val
+
+	# Gros saut isolé ou pas encore confirmé : on garde l'ancienne valeur.
+	print "valeur HX711 aberrante rejetee:", val, "ancienne:", self.pbassinelle, "count:", self.bigJumpCount
+	return self.pbassinelle
+
         
     def met_a_zero(self):
         with self.lok:
             self.hx.zero(times=20)
+	# Après une tare, on repart explicitement de zéro.
+        # Sinon le filtre peut comparer la nouvelle valeur zéro
+        # avec une ancienne valeur résiduelle.
+            self.pbassinelle = 0.0
+            self.bigJumpCandidate = None
+            self.bigJumpCount = 0
             self.last_valid = None
             self._stopevent.wait(0.01)
 
