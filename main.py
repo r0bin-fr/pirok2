@@ -517,18 +517,21 @@ while not done:
 	
 	#get switch update
     	if encoder.get_bPushed():
-#        	print "switch on!"
-		screenOnWithTimeout()
-		#were we already in boost mode?
-		if(consigneBoost == 0):
-			lastTargetTemp = temptarget
-			temptarget = BOOST_BOILER_TEMP
-			consigneBoost = 1
+		if flagTouch == 0:
+			screenOnWithTimeout()
 		else:
-			temptarget = lastTargetTemp
-			consigneBoost = 0
-		#apply settings immediately
-		task6PID.setTargetTemp(temptarget)
+	        	#if screen is on, apply boost mode
+			screenOnWithTimeout()
+			#were we already in boost mode?
+			if(consigneBoost == 0):
+				lastTargetTemp = temptarget
+				temptarget = BOOST_BOILER_TEMP
+				consigneBoost = 1
+			else:
+				temptarget = lastTargetTemp
+				consigneBoost = 0
+			#apply settings immediately
+			task6PID.setTargetTemp(temptarget)
 
 	#check for weight
 	poids = poidsData.getRange()
@@ -564,33 +567,36 @@ while not done:
 	#get encoder updates
 	delta = encoder.get_cycles()
 	#did we turn the encoder?
-    	if delta!=0:	
-		#turn on screen
-		screenOnWithTimeout()
-	
-		#only update pump when extracting, and temp when idle
-		if(isPumpRunning):
-			#update pump rate
-			pumpPTarget += delta
-			if(pumpPTarget > 11):
-				pumpPTarget = 11
-			if(pumpPTarget < 0):
-				pumpPTarget = 0
-			task7PID.setTargetPressure(pumpPTarget)
-			
+    	if delta!=0:
+		if flagTouch==0:
+ 			#turn on screen only
+			screenOnWithTimeout()
 		else:
-			#update temp target
-			if(consigneBoost == 0):
-				temptarget += delta
-				#dont go too far
-				if(temptarget > BOOST_BOILER_TEMP):
-					temptarget=BOOST_BOILER_TEMP
-				#dont go too low
-				if(temptarget < 100):
-					temptarget=100
-				print "new temp target=", temptarget
-				#apply settings immediately
-				task6PID.setTargetTemp(temptarget)
+			#turn on screen and proceed to treatment
+			screenOnWithTimeout()	
+			#only update pump when extracting, and temp when idle
+			if(isPumpRunning):
+				#update pump rate
+				pumpPTarget += delta
+				if(pumpPTarget > 12):
+					pumpPTarget = 12
+				if(pumpPTarget < 0):
+					pumpPTarget = 0
+				task7PID.setTargetPressure(pumpPTarget)
+			
+			else:
+				#update temp target
+				if(consigneBoost == 0):
+					temptarget += delta
+					#dont go too far
+					if(temptarget > BOOST_BOILER_TEMP):
+						temptarget=BOOST_BOILER_TEMP
+					#dont go too low
+					if(temptarget < 100):
+						temptarget=100
+					print "new temp target=", temptarget
+					#apply settings immediately
+					task6PID.setTargetTemp(temptarget)
 
 	#get values update
 	tboil=maximT1.getTemp()
