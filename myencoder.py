@@ -50,7 +50,8 @@ class RotaryEncoder:
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setup(a_pin, GPIO.IN)
 	GPIO.setup(b_pin, GPIO.IN)
-	GPIO.setup(sw_pin, GPIO.IN)
+	#GPIO.setup(sw_pin, GPIO.IN)
+	GPIO.setup(sw_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP) #switch to ground
 	#this one has no pullup
 	GPIO.setup(touch_pin, GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
 
@@ -201,7 +202,8 @@ class RotaryEncoder:
 #	GPIO.add_event_callback(self.t_pin,isr3)
 	GPIO.add_event_detect(self.a_pin,GPIO.BOTH,callback=isr)
 	GPIO.add_event_detect(self.b_pin,GPIO.BOTH,callback=isr)
-	GPIO.add_event_detect(self.sw_pin,GPIO.BOTH,callback=isr2,bouncetime=300)
+	GPIO.add_event_detect(self.sw_pin,GPIO.FALLING,callback=isr2,bouncetime=300)
+	#GPIO.add_event_detect(self.sw_pin,GPIO.BOTH,callback=isr2,bouncetime=300)
 	GPIO.add_event_detect(self.t_pin,GPIO.RISING,callback=isr3,bouncetime=150)
 #	GPIO.add_event_detect(self.t_pin,GPIO.RISING,callback=isr3)
 
