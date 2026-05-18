@@ -194,17 +194,13 @@ graphRY=0
 COL_X = 1
 COL_Y = 110
 
-#Weight total bars during extraction
-#Blue bars are drawn first, pressure graph is drawn over them.
-WEIGHT_TOTAL_TARGET = 40.0      # grams for full-height bar
-WEIGHT_BAR_X_MIN = COL_X + 2
-WEIGHT_BAR_X_MAX = 159
+#Total weight blue bars during extraction
+#Each refresh draws only one new bar at the current graph X position.
+#Pressure is drawn immediately after, over the blue bar.
+WEIGHT_TOTAL_TARGET = 40.0      # grams corresponding to full graph height
 WEIGHT_BAR_Y_TOP = 0
 WEIGHT_BAR_Y_BASE = COL_Y - 1
 WEIGHT_BAR_WIDTH = 2
-WEIGHT_BAR_SPACE = 1
-WEIGHT_BAR_MAX_COUNT = 52
-weightTotalHistory = []
 
 def init_graph_extraction():
 	global ext_rang 
@@ -228,93 +224,51 @@ def init_graph_extraction():
 		j=j+10
 	#non-GUI settings for extraction control
 
-def reset_weight_total_bars():
-	global weightTotalHistory
+def draw_weight_total_bar(x, currentWeight):
+    #Draw one blue background bar representing total extracted weight.
+    #It is drawn only at the current graph X position.
+    #The pressure curve must be drawn after this function, so it appears on top.
 
-	#Called at the beginning of each extraction.
-	#Since the HX711 is tared at extraction start, history must restart from zero.
-	weightTotalHistory = []
+    if currentWeight < 0:
+        currentWeight = 0.0
 
+    if currentWeight > WEIGHT_TOTAL_TARGET:
+        currentWeight = WEIGHT_TOTAL_TARGET
 
-def update_weight_total_bars(currentWeight):
-	global weightTotalHistory
+    ratio = currentWeight / WEIGHT_TOTAL_TARGET
 
-	#Safety against HX711 negative noise.
-	if currentWeight < 0:
-		currentWeight = 0.0
+    if ratio < 0:
+        ratio = 0
+    if ratio > 1:
+        ratio = 1
 
-	#Cap the value so bars do not exceed the graph height.
-	if currentWeight > WEIGHT_TOTAL_TARGET:
-		currentWeight = WEIGHT_TOTAL_TARGET
+    barHeight = int(ratio * (WEIGHT_BAR_Y_BASE - WEIGHT_BAR_Y_TOP))
 
-	#Store total weight for this refresh.
-	weightTotalHistory.append(currentWeight)
+    if barHeight <= 0:
+        return
 
-	#Keep only the last visible bars.
-	if len(weightTotalHistory) > WEIGHT_BAR_MAX_COUNT:
-		weightTotalHistory.pop(0)
+    x1 = x
+    x2 = x + WEIGHT_BAR_WIDTH
 
+    if x1 > 159:
+        return
+    if x2 > 159:
+        x2 = 159
 
-def draw_weight_total_bars():
-	#No need to clear here if ihm_extraction() already clears the full screen.
-	#This function only draws the blue weight layer.
+    y1 = WEIGHT_BAR_Y_BASE - barHeight
+    y2 = WEIGHT_BAR_Y_BASE
 
-	digole.setFGcolor(cBleu)
-
-	i = 0
-	for w in weightTotalHistory:
-		ratio = w / WEIGHT_TOTAL_TARGET
-
-		if ratio < 0:
-			ratio = 0
-		if ratio > 1:
-			ratio = 1
-
-		#Convert total weight into bar height.
-		barHeight = int(ratio * (WEIGHT_BAR_Y_BASE - WEIGHT_BAR_Y_TOP))
-
-		if barHeight > 0:
-			x1 = WEIGHT_BAR_X_MIN + i * (WEIGHT_BAR_WIDTH + WEIGHT_BAR_SPACE)
-			y1 = WEIGHT_BAR_Y_BASE - barHeight
-			x2 = x1 + WEIGHT_BAR_WIDTH
-			y2 = WEIGHT_BAR_Y_BASE
-
-			if x1 <= WEIGHT_BAR_X_MAX:
-				digole.fillRect(x1, y1, x2, y2)
-
-		i = i + 1
-
-
-def redraw_extraction_axes():
-	#Draw pressure graph axes over the blue weight bars.
-	digole.setFGcolor(cBlanc)
-	digole.drawLine(COL_X,0,COL_X,COL_Y+1)
-	digole.drawLine(COL_X,COL_Y,160,COL_Y)
-	digole.drawLine(COL_X,COL_Y+1,160,COL_Y+1)
-
-def draw_extraction_axes():
-	# Draw pressure graph axes.
-	# This is called at each refresh because the screen is cleared.
-	digole.setFGcolor(cBlanc)
-
-	# Y axis
-	digole.drawLine(COL_X, 0, COL_X, COL_Y + 1)
-
-	# X axis, drawn thicker with two lines
-	digole.drawLine(COL_X, COL_Y, 160, COL_Y)
-	digole.drawLine(COL_X, COL_Y + 1, 160, COL_Y + 1)
+    digole.setFGcolor(cBleu)
+    digole.fillRect(x1, y1, x2, y2)
 
 def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids):
 	global ext_rang
 	global graphTX,graphTY,graphRX,graphRY
 
-	#1. Update total weight history.
-	update_weight_total_bars(poids)
-	#2. Draw blue total-weight bars as background.
-	draw_weight_total_bars()
-	#3. Redraw axes above the blue bars.
-	redraw_extraction_axes()
-	
+    #Draw only the new blue weight bar at current X position.
+    #Pressure graph will be drawn just after, so it remains visible over the bar.
+    draw_weight_total_bar(ext_rang, poids)
+
 	digole.setFont(fSmall)
 	digole.setFGcolor(cBlanc)
 	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,tnez)	
@@ -493,8 +447,6 @@ def startExtractionMode():
 	#accelere le rythme de pesee / pression / PID
 	task3.rythmeHaut()
 	task3.met_a_zero()
-	#Reset total weight bars after HX711 tare.
-	reset_weight_total_bars()
 	
 	task8.rythmeHaut()
 	task9.rythmeHaut()
@@ -758,4 +710,3 @@ while not done:
 	   
 #end the tasks nicely
 quitApplicationNicely()
-
