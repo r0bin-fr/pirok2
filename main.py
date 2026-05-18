@@ -34,7 +34,7 @@ OLED_TIMEOUT 	    = 120   #in seconds
 OLED_FADE_TIMEOUT   = 10    #in seconds
 OLED_WHITE_STD	    = 254
 OLED_WHITE_FADE	    = 98 #76
-BL_STD = 40
+BL_STD = 100 #40
 EXTRACTION_TIMEOUT  = 7   #in seconds
 DEFAULTPUMPVAL		= 9 #11    #in bar
 BOOST_TIMEOUT = 5 * 60 # 5 minutes in seconds
@@ -52,11 +52,12 @@ WG_RANGE_MAX = 50.0
 #Parametres font / couleur
 cNoir = 0#4 #254
 cBlanc = OLED_WHITE_STD #254 #4
-cB1=cB2=cB3=63
-cBleu = 82 #70 #0x32 #2
-cRouge = 0xC4 #224
+cBleu = 159 #82 #70 #0x32 #2
+cBleuF = 18 #82 #0x0B
+cRouge = 0xE4 #0xC4 #224
 cVert = 28
-cGris = cBleu #76
+cGris = 213 #cBleu #76
+cOrange = 0xF0
 fBig=200
 fSmall=201
 
@@ -192,7 +193,11 @@ graphTY = 0
 graphRX=0
 graphRY=0
 COL_X = 1
-COL_Y = 110
+#COL_Y = 110
+BOTTOM_TEXT_Y = 128
+BOTTOM_TEXT_HEIGHT = 16
+COL_Y = BOTTOM_TEXT_Y - BOTTOM_TEXT_HEIGHT - 3
+
 
 #Pressure graph protection
 PRESSURE_GRAPH_MAX_BAR = 12.0       # top of graph = 12 bar
@@ -239,12 +244,13 @@ def init_graph_extraction(currentBar=0.0):
 	lastDisplayedBar = clamp_pressure_value(currentBar)
 
 	digole.clearScreen()
-	digole.setFGcolor(cBlanc)
+	digole.setFGcolor(cGris) #cBlanc)
 
 	#AXES
 	digole.drawLine(COL_X,0,COL_X,COL_Y+1)
 	digole.drawLine(COL_X,COL_Y,160,COL_Y)
-	digole.drawLine(COL_X,COL_Y+1,160,COL_Y+1)
+	#digole.drawLine(COL_X,COL_Y+1,160,COL_Y+1)
+
 	#DOTS
 	i=0
 	while(i<COL_Y):
@@ -254,7 +260,6 @@ def init_graph_extraction(currentBar=0.0):
 	while(j<160):
 		digole.drawLine(j,COL_Y+1,j,COL_Y+2)
 		j=j+10
-	#non-GUI settings for extraction control
 
 
 def get_weight_for_graph(poids):
@@ -320,7 +325,7 @@ def draw_weight_total_bar(x, currentWeight):
         return
 
     x1 = x
-    x2 = x + WEIGHT_BAR_WIDTH
+    x2 = x #+ WEIGHT_BAR_WIDTH
 
     if x1 > 159:
         return
@@ -330,7 +335,7 @@ def draw_weight_total_bar(x, currentWeight):
     y1 = WEIGHT_BAR_Y_BASE - barHeight
     y2 = WEIGHT_BAR_Y_BASE
 
-    digole.setFGcolor(cBleu)
+    digole.setFGcolor(cBleuF)
     digole.fillRect(x1, y1, x2, y2)
 
 def clamp_pressure_value(bar):
@@ -411,6 +416,7 @@ def draw_pressure_graph_segment(bar, pumpPTarget):
 	graphRX = ext_rang
 	graphRY = barY
 
+#---- Fonction principale pour affichage extraction
 def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids):
 	global ext_rang
 	global graphTX,graphTY,graphRX,graphRY
@@ -419,16 +425,32 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
     	#Pressure graph will be drawn just after, so it remains visible over the bar.
 	poidsForGraph = get_weight_for_graph(poids)
 	draw_weight_total_bar(ext_rang, poidsForGraph)
-
+	
+	#affichage pression 
 	digole.setFont(fSmall)
+	digole.setFGcolor(cVert)
+	st=" {0:.1f} ".format(bar)
+	digole.printTextP(5,BOTTOM_TEXT_Y,st)
 	digole.setFGcolor(cBlanc)
-	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,tnez)	
+	st="/{0:.0f}b ".format(pumpPTarget)	
+	digole.printTextP(45,BOTTOM_TEXT_Y,st)
 #	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,poids)	
 #	st=" {0:.1f}b {1:.1f} {2:.1f}+ ".format(bar,poids,tnez)	
-	digole.printTextP(15,120,st)
-	
-	st=" {0:.1f} ".format(poidsForGraph)
-	digole.printTextP(15,25,st)
+
+	#affichage temperature	
+	digole.setFGcolor(cOrange)
+	st=" {0:.1f}+ ".format(tnez)
+	digole.printTextP(90,BOTTOM_TEXT_Y,st)
+
+	#affichage poids
+	digole.setFGcolor(cBlanc)
+	digole.setFont(fSmall)
+	st="{0:.1f} ".format(poidsForGraph)
+	digole.printTextP(16,25,st)
+	digole.setFont(0)
+	digole.setCursorMove(-7,-3)
+	digole.printText("g ")
+
 
 	#Draw protected pressure graph over the blue weight bar.
 	draw_pressure_graph_segment(bar, pumpPTarget)
@@ -439,50 +461,10 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
 		init_graph_extraction(bar)
 
 
-def ihm_extraction_old(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget):
-	txadj = 5
-	#temp nez	
-	digole.setFont(fSmall)
-	digole.setFGcolor(cRouge)
-	digole.printTextP(5+txadj,20,"c")
-	if( consigneBoost == 0 ):
-		digole.setFGcolor(cBlanc)
-	if tboil > 200:
-		tboil = 199.0
-	if tboil < 0:
-		tboil = 0.0
-	st=" {0:.1f}+   ".format(tnez)
-	#st=" {0:.0f}/{1:.0f}+   ".format(tboil, temptarget)
-	digole.printText(st)
-
-	#timer
-	txadj=5
-	digole.setFGcolor(cVert)
-	digole.printTextP(5,40,"d")	
-	digole.setFGcolor(cBlanc)
-	st="{0:.1f}".format(pumpOfficialChrono)#(time.time() - pumpTimestamp))
-	digole.printTextP(39,40,str(st)+"\'    ")
-
-	#puissance pompe
-	digole.setFGcolor(cBleu)
-	digole.printTextP(12,57,"b")	
-	digole.setFGcolor(cBlanc)
-	st="{0:.0f}a  ".format(pumpRate)
-	digole.printTextP(39,60,st)
 	
-	#pression extraction
-	digole.setFGcolor(cBleu)#242)
-	digole.setFont(fSmall)	
-	digole.printTextP(0,110,"b")
-	digole.setFont(fBig)
-	st="{0:2.1f}".format(bar)
-	digole.printText(str(st)+" ")
-	st=str(int(pumpPTarget))+" "
-	digole.printText(st)
-
-	
-#update the screen
+#---- Fonction principale pour ecran idle
 def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids):
+	global cGris
 	#display a specific GUI when extracting
 	if(isPumpRunning):
 		return ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids)
@@ -490,7 +472,7 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 	#temp chaudiere	
 	digole.setFont(fSmall)
 	digole.setFGcolor(cRouge)
-	digole.printTextP(5,20,"c")
+	digole.printTextP(5,30,"c")
 	if( consigneBoost == 0 ):
 		digole.setFGcolor(cBlanc)
 	if tboil > 200:
@@ -501,54 +483,61 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 	digole.printText(st)
 	
 	#pression extraction
-#matbf	tshiftx=15
 	tshiftx=5
 	digole.setFGcolor(cVert)
-	digole.printTextP(89+tshiftx,20,"d")	
+	digole.printTextP(89+tshiftx,30,"d")	
 	digole.setFGcolor(cBlanc)
 #	digole.printTextP(116+tshiftx,20,"     ")
 	digole.printText2(0,1," ")
 	#st="{0:.1f}".format(random.uniform(5, 10))
 	st="{0:.1f}  ".format(bar)
 #	digole.printTextP(118+tshiftx,20,str(st)+"b")
-	digole.printTextP(118+tshiftx,20,str(st))
+	digole.printTextP(118+tshiftx,30,str(st))
 	
 	#niveau eau
 	digole.setFont(fBig)
-	digole.setFGcolor(cBleu)
-	digole.printTextP(30,80,chr(ord('A')+getWLvalue(range)))
+	digole.setFGcolor(cGris)#cBleu)
+	digole.printTextP(30,90,chr(ord('A')+getWLvalue(range)))
 
 	#temperature
 	digole.setFGcolor(cBlanc)
 	st="{0:.1f}".format(tnez)
 #	st="{0:.1f}".format(poids)
-	digole.printTextP(50,80,str(st)+"+ ")
+	digole.printTextP(50,90,str(st)+"+ ")
+
+#bymatt
+	digole.setFGcolor(cBlanc)
+        digole.setFont(0)
+	st="{0:.0f}   ".format(cGris)
+        digole.printTextP(25,100,st)
+
 
 	#get the current time
+#	if(int(time.time())%2 == 0):   
+#		stime=time.strftime('%H.%M')
+#	else:
+#		stime=time.strftime('%H\'%M')
 	if(int(time.time())%2 == 0):   
-		stime=time.strftime('%H.%M')
+		stime=time.strftime('%H %M')
 	else:
-		stime=time.strftime('%H\'%M')
+		stime=time.strftime('%H:%M')
+	digole.setFGcolor(cGris)
+	digole.setFont(0)
+	digole.printTextP(25,118,"tulipes / "+stime)
+	#digole.setFont(fSmall)
+	#digole.printTextP(50,118,stime+" ")
 
 	#temperature ambiante et hygrometrie
-	digole.setFGcolor(cBlanc)
-	digole.setFont(fSmall)
-#	st="{0:.1f}+ / {1:.0f}a".format(temp,hum)
-#	digole.printText2(3,6,st)
-#	digole.printText2(1,6,stime+" ")
-	digole.printTextP(5,118,stime+" ")
-
 #	st="{0:.1f}+/{1:.0f}a".format(temp,hum)
 #	st="{0:.1f}+/{1:.0f}a  ".format(temp,poids)
-	st="{0:.1f}g/{1:.0f}a  ".format(poids,hum)
-	digole.setFGcolor(cGris)
-	digole.printTextP(66,118,st)
-#	digole.printText2(1,6,stime+st)
+	#st="{0:.1f}g/{1:.0f}a  ".format(poids,hum)
+
+#remove this ? 
+#	st="{0:.0f}g  ".format(cBlanc)
+#	digole.setFGcolor(cGris)
+#	digole.printTextP(66,118,st)
+
 	
-#	t=0
-#	while (t < 5):
-#		digole.scrollDisp(60,60,100,40,1,0)
-#		t=t+1
 
 
 # screen on with timeout
@@ -814,6 +803,14 @@ while not done:
 					print "new temp target=", temptarget
 					#apply settings immediately
 					task6PID.setTargetTemp(temptarget)
+
+				#test color
+				cGris += delta
+				if(cGris > 255):
+					cGris = 0
+				if(cGris < 0):
+					cGris = 255
+
 
 	#get values update
 	tboil=maximT1.getTemp()

@@ -124,6 +124,7 @@ class RotaryEncoder:
     def updatePush(self,args):
 	self.lokP.acquire()
 
+	print "update PUSSHHHHHH!!!"
 	#avoid false positives
 	if(GPIO.input(self.sw_pin) == 0):
 		self.bPush = True

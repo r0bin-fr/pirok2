@@ -96,6 +96,12 @@ class DigoleMaster:
 	        self.sendVal(x)
 	        self.sendVal(y)
 
+	#- Decale le curseur (pixels)
+	def setCursorMove(self,x,y):
+	        self.sendCmd("ETO")
+	        self.sendVal(x)
+	        self.sendVal(y)
+
 	def setCursorLastPos(self):
 		self.sendCmd("ETB")
 
