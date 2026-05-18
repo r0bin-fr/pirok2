@@ -37,6 +37,8 @@ OLED_WHITE_FADE	    = 98 #76
 BL_STD = 40
 EXTRACTION_TIMEOUT  = 7   #in seconds
 DEFAULTPUMPVAL		= 9 #11    #in bar
+BOOST_TIMEOUT = 5 * 60 # 5 minutes in seconds
+boostTimestamp = 0.0
 
 #Encoder
 A_PIN = 5
@@ -410,8 +412,27 @@ def stopExtractionMode():
 	task8.rythmeBas()
 	task9.rythmeBas()
 	task7PID.rythmeBas()
-	
-# -------- Main Program Loop -----------
+
+#surveille que le boost ne dure pas trop longtemps
+def check_boost_timeout(): 
+	global temptarget
+	global lastTargetTemp
+	global consigneBoost
+	global boostTimestamp
+
+	if consigneBoost == 1:
+		if boostTimestamp > 0:
+			if (time.time() - boostTimestamp) > BOOST_TIMEOUT:
+				print "Boost timeout - back to previous target temp"
+				temptarget = lastTargetTemp
+ 				consigneBoost = 0
+ 				boostTimestamp = 0.0
+				#apply settings immediately
+	                        task6PID.setTargetTemp(temptarget)
+
+# -------------------------------------------------------
+# ------------------- Main Program Loop -----------------
+# -------------------------------------------------------
 #intercept control c for nice quit
 signal.signal(signal.SIGINT, signal_handler)
 done = False
@@ -515,6 +536,9 @@ while not done:
 				#cBlanc = OLED_WHITE_FADE
 				digole.setBL(10)
 	
+	#check si on a pas un timeout sur le boostmode
+	check_boost_timeout()
+
 	#get switch update
     	if encoder.get_bPushed():
 		if flagTouch == 0:
@@ -527,9 +551,11 @@ while not done:
 				lastTargetTemp = temptarget
 				temptarget = BOOST_BOILER_TEMP
 				consigneBoost = 1
+				boostTimestamp = time.time()
 			else:
 				temptarget = lastTargetTemp
 				consigneBoost = 0
+				boostTimestamp = 0.0
 			#apply settings immediately
 			task6PID.setTargetTemp(temptarget)
 
