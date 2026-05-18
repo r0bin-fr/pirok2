@@ -8,7 +8,9 @@ import time # pour tempo 1s
 
 # Activation du bus SPI
 spi = spidev.SpiDev() #nouvel objet SPI
-spi.open(0,0) # sur port SPI 0 CS 0
+#print "spi=",spi
+resu = spi.open(0,0) # sur port SPI 0 CS 0
+#print "resu=", resu
 spi.max_speed_hz = 1000000 # vitesse = 200 KHz pour le digole (max 15000000)
 spi.bits_per_word = 8 #8 bits per word
 spi.lsbfirst = False #MSB bits
@@ -17,11 +19,13 @@ spi.mode = 0 #mode SPI O
 #- Envoie une commande (string)
 def sendCmd(buf):
 	for c in buf:
-		spi.writebytes([ord(c)])
+		w = spi.writebytes([ord(c)])
+#		print "writebyte:",w
 
 #- Envoie une commande (valeur)
 def sendVal(val):
-	spi.writebytes([val])
+	w = spi.writebytes([val])
+#	print "writebyte2:",w
 
 #- Envoie plusieurs valeurs
 def sendVals(val):
@@ -139,8 +143,14 @@ def scroll(x,y,w,h,Ox,Oy):
 	sendCmd("MA")
 	sendVals([x,y,w,h,Ox,Oy])
 
+
+def setModuleOFF():
+        sendCmd("DNALL")
+
+
 #---------------------
 #------ MAIN ---------
 #---------------------
 
 setScreen(1)
+

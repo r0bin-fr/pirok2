@@ -11,7 +11,7 @@ from time import gmtime, strftime
 from datetime import datetime as dt
 import mydigole
 import myencoder
-import myplotly
+#import myplotly
 import random
 import readMaxim
 import readHSR
@@ -30,10 +30,11 @@ TEMPBACKUP = '/home/pi/pirok2/settings.txt'
 DEFAULT_BOILER_TEMP = 115
 BOOST_BOILER_TEMP   = 124
 SCREEN_UPDATE_TIME  = 0.5  #500ms
-OLED_TIMEOUT 	    = 60   #in seconds
-OLED_FADE_TIMEOUT   = 5    #in seconds
+OLED_TIMEOUT 	    = 120   #in seconds
+OLED_FADE_TIMEOUT   = 10    #in seconds
 OLED_WHITE_STD	    = 254
 OLED_WHITE_FADE	    = 98 #76
+BL_STD = 40
 EXTRACTION_TIMEOUT  = 7   #in seconds
 DEFAULTPUMPVAL		= 9 #11    #in bar
 
@@ -67,9 +68,11 @@ flowData = readFlow.FlowData()
 pumpPTarget = DEFAULTPUMPVAL
 poidsData = readHSR.HSRData(0)
 poidsBTData = readHSR.HSRData(0)
+poids = 0.0
+lastpoids = 0.0
 
 #plotly data
-myplot = myplotly.MyPlotly(0)
+#myplot = myplotly.MyPlotly(0)
 
 #tasks
 task1 = multithreadTemp.TaskPrintTemp(0,maximT1)
@@ -220,6 +223,9 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
 #	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,poids)	
 #	st=" {0:.1f}b {1:.1f} {2:.1f}+ ".format(bar,poids,tnez)	
 	digole.printTextP(15,120,st)
+	
+	st=" {0:.1f} ".format(poids)
+	digole.printTextP(15,25,st)
 
 	#init first line
 	if(graphTX == -1):
@@ -345,8 +351,9 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 #	digole.printText2(1,6,stime+" ")
 	digole.printTextP(5,118,stime+" ")
 
-	st="{0:.1f}+/{1:.0f}a".format(temp,hum)
+#	st="{0:.1f}+/{1:.0f}a".format(temp,hum)
 #	st="{0:.1f}+/{1:.0f}a  ".format(temp,poids)
+	st="{0:.1f}g/{1:.0f}a  ".format(poids,hum)
 	digole.setFGcolor(cGris)
 	digole.printTextP(66,118,st)
 #	digole.printText2(1,6,stime+st)
@@ -361,9 +368,11 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 def screenOnWithTimeout():
 	global digole,flagTouch,touchTstamp,cBlanc
 	digole.setScreen(1)
+#	digole.setDrawDir(2)
         flagTouch=1
         touchTstamp = time.time()
 	cBlanc = OLED_WHITE_STD
+	digole.setBL(BL_STD)
 
 #screen off, timeout disabled
 def screenOffNow():
@@ -374,6 +383,7 @@ def screenOffNow():
 	digole.setOLEDOFF()
         flagTouch=0
 	cBlanc = OLED_WHITE_STD
+	digole.setBL(BL_STD)
 
 #start extraction mode
 def startExtractionMode():
@@ -381,7 +391,8 @@ def startExtractionMode():
 	print "startExtractionMode"
 	pumpTimestamp = time.time()
 	#accelere le rythme de pesee / pression / PID
-	#task3.rythmeHaut()
+	task3.rythmeHaut()
+	task3.met_a_zero()
 	task8.rythmeHaut()
 	task9.rythmeHaut()
 	task7PID.rythmeHaut()
@@ -395,7 +406,7 @@ def stopExtractionMode():
 	print "stopExtractionMode"
 	digole.clearScreen()
 	#reduit le rythme de pesee / pression / PID
-	#task3.rythmeBas()
+	task3.rythmeBas()
 	task8.rythmeBas()
 	task9.rythmeBas()
 	task7PID.rythmeBas()
@@ -411,8 +422,10 @@ consigneBoost = 0
 
 #digole screen init
 digole = mydigole.DigoleMaster()
+digole.setDrawDir(2)
+digole.setBL(BL_STD)
 digole.setFGcolor(cNoir)
-digole.setBGcolor()
+digole.setBGcolor(cNoir)
 digole.clearScreen()
 
 #encoder init
@@ -499,11 +512,12 @@ while not done:
 		else:
 			if (timestamp - touchTstamp) >= (OLED_TIMEOUT - OLED_FADE_TIMEOUT):
 				#fade whites
-				cBlanc = OLED_WHITE_FADE
-					
+				#cBlanc = OLED_WHITE_FADE
+				digole.setBL(10)
+	
 	#get switch update
     	if encoder.get_bPushed():
-        	print "switch on!"
+#        	print "switch on!"
 		screenOnWithTimeout()
 		#were we already in boost mode?
 		if(consigneBoost == 0):
@@ -516,14 +530,36 @@ while not done:
 		#apply settings immediately
 		task6PID.setTargetTemp(temptarget)
 
-	#did we press on the bassinelle?
+	#check for weight
 	poids = poidsData.getRange()
-#	if( poids > 50 ):
-#		print strftime("%Y-%m-%d %H:%M:%S", gmtime())," weight on:",poids,"g."
-	if poids > 300: #( poids > 10) and ( poids < 100 ):
-		print strftime("%Y-%m-%d %H:%M:%S", gmtime())," weight on:",poids,"g."
-		#if yes, turn on screen
-                screenOnWithTimeout()
+	if poids < 0:
+		poids = 0
+	if(isPumpRunning == 0):
+		#avoid erronous values
+		#if(abs(poids-lastpoids)<25):
+			#did we exeed the maximum shot weigth = 18gr ?
+			#if poids > 18:
+			#	print "suspend pump!!"
+			#	task7PID.suspendPump()
+			#	poids = poidsData.getRange()
+			#else:
+			#	task7PID.setTargetPressure(pumpPTarget)
+			#remember last correct val
+			#lastpoids = poids
+
+	#else:
+		#did we press on the bassinelle?
+		if poids > 300: #( poids > 10) and ( poids < 100 ):
+			#print strftime("%Y-%m-%d %H:%M:%S", gmtime())," weight on:",poids,"g."
+			#if yes, turn on screen
+                	screenOnWithTimeout()
+			#reset balance
+			task3.met_a_zero()			
+	
+	#is BT weight sensor connected? if yes the screen is ON
+	if (task8.isNotConnected() == 0):
+#                print strftime("%Y-%m-%d %H:%M:%S", gmtime())," screen on with BT!"
+		screenOnWithTimeout()	
 
 	#get encoder updates
 	delta = encoder.get_cycles()
@@ -569,15 +605,15 @@ while not done:
 	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate,pumpPTarget,poids)
 	#- stream data online
 	#-- no extration: refresh only each 5 minutes
-	if((dt.now().minute % 2) == 0): 
-		if(plyrefresh):
-			myplot.update(tboil,tnez,t4,h4)
-			plyrefresh=0
-	else:
-		plyrefresh = 1
+	#if((dt.now().minute % 2) == 0): 
+		#if(plyrefresh):
+			#myplot.update(tboil,tnez,t4,h4)
+			#plyrefresh=0
+	#else:
+	#	plyrefresh = 1
 	#-- extraction: refresh rate 0.5s with full data
-	if (isPumpRunning):
-		myplot.updateFull(tboil,tnez,t4,h4,b9,pumpPTarget,poids2,fl)
+	#if (isPumpRunning):
+	#	myplot.updateFull(tboil,tnez,t4,h4,b9,pumpPTarget,poids2,fl)
 
     	#only sleep the time we need to respect the clock
     	remainingTimeToSleep = time.time() - timestamp

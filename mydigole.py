@@ -182,8 +182,9 @@ class DigoleMaster:
 		self.sendVals([a,b,c])
 
 	#- change la couleur du background
-	def setBGcolor(self):
+	def setBGcolor(self,m):
         	self.sendCmd("BGC")
+	        self.sendVal(m)
 
 	#- change la couleur de dessin
 	def setDrawMode(self,m):
@@ -194,6 +195,12 @@ class DigoleMaster:
 	def setDrawDir(self,m):
 	        self.sendCmd("SD")
 	        self.sendVal(m)
+
+	#- change le backlicht
+        def setBL(self,m):
+                self.sendCmd("BL")
+                self.sendVal(m)
+
 	
 	#- change l'ecran d'accueil
 	def setWelcomeScreen(self,bitm):

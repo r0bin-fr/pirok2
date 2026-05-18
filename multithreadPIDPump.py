@@ -143,7 +143,7 @@ class TaskControlPID(threading.Thread):
 				if(cTargetPressure == 10):
 					maxdrive=50+25
 				if(cTargetPressure == 9):
-                                        maxdrive=50+22
+                                        maxdrive=50+21 #etait 22
 				if(cTargetPressure == 8):
                                         maxdrive=50+19
 				if(cTargetPressure < 8):
@@ -158,8 +158,12 @@ class TaskControlPID(threading.Thread):
 				#target=10 max=20
 				if(drv > maxdrive):
 	                                drv = maxdrive
-
-			print "Bar/",latestPressure,"/Target/",cTargetPressure,"/Real drv% to SSR/",drv,"/raw drive/",drive
+			
+			#turn off if 0 requested (when target weight is obtained)
+			if(cTargetPressure == 0):
+				drv = 0
+			
+			#print "Bar/",latestPressure,"/Target/",cTargetPressure,"/Real drv% to SSR/",drv,"/raw drive/",drive
 			#SSRControl.setPumpPWM( 50 + (drv/2) )
 			#moyenne
 			#drv = (drv + self.m_latestPower + self.m_latestPower2)/3
@@ -175,6 +179,22 @@ class TaskControlPID(threading.Thread):
 		if ( remain > 0.0 ):
 #			print "sleeping ", remain
 			self._stopevent.wait(remain)
+
+    def suspendPump(self):
+        print "suspend pump and drive"
+	if(self.getTargetPressure() == 0):
+		return
+	self.lok.acquire()
+	#set target
+	self.m_targetPressure = 0
+	#update pump drive
+	drv = 0	
+	self.currentDrive = drv
+        SSRControl.setPumpPWM( drv )
+        self.m_latestPower2 = self.m_latestPower
+        self.m_latestPower = drv
+	self.lok.release()
+		
 
     def stop(self): 
 	print "stopping thread no", self.taskid

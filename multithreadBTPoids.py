@@ -36,6 +36,10 @@ class TaskPrintWeight2(threading.Thread):
                 except:
                         print "disconnect error"
 
+    #tells if BT is connected 
+    def isNotConnected(self):
+	return self.isBTNOK
+
     def connect(self):
 	#UUID where temp is stored
 #	tempc_uuid = UUID(0x0021)
@@ -81,7 +85,7 @@ class TaskPrintWeight2(threading.Thread):
                 try:
 #			print "BT READ, get value..."
 			tc=self.extractBLEval(self.cht.read())
-			print "poids=",tc
+#			print "BT poids=",tc
                         return tc
 
                 except BTLEException as e:
