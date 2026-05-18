@@ -496,7 +496,7 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 	
 	#niveau eau
 	digole.setFont(fBig)
-	digole.setFGcolor(cGris)#cBleu)
+	digole.setFGcolor(cBleu)
 	digole.printTextP(30,90,chr(ord('A')+getWLvalue(range)))
 
 	#temperature
@@ -506,10 +506,10 @@ def digole_update(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarg
 	digole.printTextP(50,90,str(st)+"+ ")
 
 #bymatt
-	digole.setFGcolor(cBlanc)
-        digole.setFont(0)
-	st="{0:.0f}   ".format(cGris)
-        digole.printTextP(25,100,st)
+#	digole.setFGcolor(cBlanc)
+#       digole.setFont(0)
+#	st="{0:.0f}   ".format(cGris)
+#        digole.printTextP(25,100,st)
 
 
 	#get the current time
@@ -805,11 +805,11 @@ while not done:
 					task6PID.setTargetTemp(temptarget)
 
 				#test color
-				cGris += delta
-				if(cGris > 255):
-					cGris = 0
-				if(cGris < 0):
-					cGris = 255
+#				cGris += delta
+#				if(cGris > 255):
+#					cGris = 0
+#				if(cGris < 0):
+#					cGris = 255
 
 
 	#get values update
