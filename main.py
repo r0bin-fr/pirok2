@@ -455,10 +455,16 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
 	#Draw protected pressure graph over the blue weight bar.
 	draw_pressure_graph_segment(bar, pumpPTarget)
 
-	#increment x
+	#increment x, scroll if needed
 	ext_rang = ext_rang + 2
 	if(ext_rang > 160):
-		init_graph_extraction(bar)
+		digole.scrollDispX(COL_Y,-70)
+		ext_rang = 160-70
+		graphTX = ext_rang
+                graphRX = ext_rang
+	#	digole.setFGcolor(cNoir)
+	#	digole.fillRect(160-70, 0, 160, COL_Y)
+	#	init_graph_extraction(bar)
 
 
 	
@@ -834,6 +840,12 @@ while not done:
 	#-- extraction: refresh rate 0.5s with full data
 	#if (isPumpRunning):
 	#	myplot.updateFull(tboil,tnez,t4,h4,b9,pumpPTarget,poids2,fl)
+
+
+	#test scroll
+#	time.sleep(1)
+#	digole.scrollDispX(COL_Y,-70)
+#	time.sleep(1)
 
 	#only sleep the time we need to respect the clock
 	remainingTimeToSleep = time.time() - timestamp

@@ -295,7 +295,7 @@ class DigoleMaster:
 		self.sendVals([x,y,w,h,dx,dy])		
 
 	#scroll display shortcut
-	def scrollDispX(self,dx):
+	def scrollDispX(self,posy,dx):
 		self.sendCmd("MA")
-		self.sendVals([0,0,160,128,dx,0])		
+		self.sendVals([0,0,160,posy,dx,0])		
 	
