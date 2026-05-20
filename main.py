@@ -73,6 +73,7 @@ poidsData = readHSR.HSRData(0)
 poidsBTData = readHSR.HSRData(0)
 poids = 0.0
 lastpoids = 0.0
+isPressureReached = 0
 
 #plotly data
 #myplot = myplotly.MyPlotly(0)
@@ -195,8 +196,7 @@ graphRY=0
 COL_X = 1
 #COL_Y = 110
 BOTTOM_TEXT_Y = 128
-BOTTOM_TEXT_HEIGHT = 16
-COL_Y = BOTTOM_TEXT_Y - BOTTOM_TEXT_HEIGHT - 3
+COL_Y = BOTTOM_TEXT_Y - 24
 
 
 #Pressure graph protection
@@ -418,7 +418,7 @@ def draw_pressure_graph_segment(bar, pumpPTarget):
 
 #---- Fonction principale pour affichage extraction
 def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTarget,poids):
-	global ext_rang
+	global ext_rang, pumpOfficialChrono
 	global graphTX,graphTY,graphRX,graphRY
 
 	#Draw only the new blue weight bar at current X position.
@@ -433,14 +433,23 @@ def ihm_extraction(tboil,tnez,temp,hum,range,bar,isPumpRunning,pumpRate,pumpPTar
 	digole.printTextP(5,BOTTOM_TEXT_Y,st)
 	digole.setFGcolor(cBlanc)
 	st="/{0:.0f}b ".format(pumpPTarget)	
-	digole.printTextP(45,BOTTOM_TEXT_Y,st)
+	digole.printTextP(48,BOTTOM_TEXT_Y,st)
 #	st=" {0:.1f}/{1:.0f}b {2:.1f}+ ".format(bar,pumpPTarget,poids)	
 #	st=" {0:.1f}b {1:.1f} {2:.1f}+ ".format(bar,poids,tnez)	
 
 	#affichage temperature	
+	#digole.setFGcolor(cOrange)
+	#st=" {0:.1f}+ ".format(tnez)
+	#digole.printTextP(90,BOTTOM_TEXT_Y,st)
+
+	#affichage chrono
 	digole.setFGcolor(cOrange)
-	st=" {0:.1f}+ ".format(tnez)
-	digole.printTextP(90,BOTTOM_TEXT_Y,st)
+	digole.setFont(fSmall)
+	st="{0:.0f} ".format(pumpOfficialChrono)
+	digole.printTextP(110,BOTTOM_TEXT_Y,st)
+	digole.setFont(0)
+	digole.setCursorMove(-7,-3)
+	digole.printText("s ")
 
 	#affichage poids
 	digole.setFGcolor(cBlanc)
@@ -571,7 +580,8 @@ def screenOffNow():
 def startExtractionMode():
 	global pumpTimestamp, task3, task9,task7PID
 	print "startExtractionMode"
-	pumpTimestamp = time.time()
+	pumpTimestamp = 0 #time.time()
+	isPressureReached = 0
 	
 	#accelere le rythme de pesee / pression / PID
 	task3.rythmeHaut()
@@ -684,7 +694,6 @@ while not done:
 				startExtractionMode()
 			isPumpRunning = 1
 			timeLastFlowRecorded = time.time()
-			pumpOfficialChrono = time.time() - pumpTimestamp
 	else:
 		#allow some time (15s) to play with pump pressure (case when not enough power to trigger flowmeter)
 		if((time.time() - timeLastFlowRecorded) > EXTRACTION_TIMEOUT):
@@ -817,7 +826,6 @@ while not done:
 #				if(cGris < 0):
 #					cGris = 255
 
-
 	#get values update
 	tboil=maximT1.getTemp()
 	tnez=maximT2.getTemp()
@@ -826,6 +834,18 @@ while not done:
 	b9 = barData.getRange()
 	pumpRate = task7PID.getCurrentDrive()
 	poids2 = poidsBTData.getRange()
+
+	#update the timer when pump is running
+	if(isPumpRunning):
+		#only count the time we reach wanted pressure
+		if isPressureReached :
+			pumpOfficialChrono = time.time() - pumpTimestamp
+		else:
+			if b9 >= pumpPTarget :
+				isPressureReached = 1
+				pumpTimestamp = time.time()
+			pumpOfficialChrono = 0
+		#print "isPressureReached=",isPressureReached," pumpRate=",b9,"pumpPTarget=",pumpPTarget,"pumpOfficialChrono=",pumpOfficialChrono
 	
 	#update the screen
 	digole_update(tboil,tnez,t4,h4,r5,b9,isPumpRunning,pumpRate,pumpPTarget,poids)
