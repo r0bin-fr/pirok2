@@ -578,9 +578,10 @@ def screenOffNow():
 
 #start extraction mode
 def startExtractionMode():
-	global pumpTimestamp, task3, task9,task7PID
+	global pumpTimestamp, task3, task9,task7PID,pumpOfficialChrono,isPressureReached
 	print "startExtractionMode"
 	pumpTimestamp = 0 #time.time()
+	pumpOfficialChrono = 0
 	isPressureReached = 0
 	
 	#accelere le rythme de pesee / pression / PID
