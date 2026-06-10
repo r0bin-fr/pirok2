@@ -105,7 +105,7 @@ def quitApplicationNicely():
 	task3.stop()
 	task4.stop()
 	task5.stop()
-	task8.stop()
+	#task8.stop()
 	task9.stop()
 	time.sleep(0.1)
 #	print "now join task 1"
@@ -579,6 +579,8 @@ def screenOffNow():
 #start extraction mode
 def startExtractionMode():
 	global pumpTimestamp, task3, task9,task7PID,pumpOfficialChrono,isPressureReached
+	global weightTareTimestamp, weightGraphBaseline, weightGraphBaselineSet
+
 	print "startExtractionMode"
 	pumpTimestamp = 0 #time.time()
 	pumpOfficialChrono = 0

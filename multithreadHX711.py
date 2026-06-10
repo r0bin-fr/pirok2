@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import glob
 import time
@@ -65,7 +66,8 @@ class TaskPrintWeight(threading.Thread):
     def filtre_valeur(self, val):
 #"""
 #    Filtre les valeurs HX711.
-#    Rejette les gros sauts isolés, mais accepte un gros changement
+#    Filtre les valeurs HX711.
+#    Rejette les gros sauts isoles, mais accepte un gros changement
 #    s'il persiste plusieurs lectures.
 #    """
 
@@ -82,7 +84,7 @@ class TaskPrintWeight(threading.Thread):
 		self.bigJumpCount = 0
 		return val
 
-	# Gros saut : on vérifie s'il ressemble au précédent candidat.
+	# Gros saut : on vérifie s'il ressemble au precedent candidat.
 	if self.bigJumpCandidate is not None:
 		candidateDelta = abs(val - self.bigJumpCandidate)
 	else:
@@ -109,17 +111,21 @@ class TaskPrintWeight(threading.Thread):
 
         
     def met_a_zero(self):
-        with self.lok:
-            self.hx.zero(times=20)
+	with self.lok:
+		self.hx.zero(times=20)
 	# Après une tare, on repart explicitement de zéro.
         # Sinon le filtre peut comparer la nouvelle valeur zéro
         # avec une ancienne valeur résiduelle.
-            self.pbassinelle = 0.0
-            self.bigJumpCandidate = None
-            self.bigJumpCount = 0
-            self.last_valid = None
-            self._stopevent.wait(0.01)
+		self.pbassinelle = 0.0
+		self.bigJumpCandidate = None
+	 	self.bigJumpCount = 0
+	 	self.last_valid = None
 
+        # Force also the shared displayed value to zero
+		self.mData.setRange(0.0) 
+		self.mData.setRange(0.0)
+	
+	self._stopevent.wait(0.01)
 
     def rythmeHaut(self):
         #set fast tempo 100ms
