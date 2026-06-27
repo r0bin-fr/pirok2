@@ -218,7 +218,7 @@ WEIGHT_BAR_WIDTH = 2
 #HX711 tare protection at extraction start
 #After task3.met_a_zero(), the HX711 thread may need a few cycles
 #before publishing the new zeroed value.
-WEIGHT_TARE_SETTLE_TIME = 0.8
+WEIGHT_TARE_SETTLE_TIME = 0.3
 #If the first value after tare is still high, use it as visual baseline
 #so the graph starts at zero instead of starting at cup weight.
 WEIGHT_TARE_BASELINE_THRESHOLD = 5.0
@@ -267,42 +267,15 @@ def init_graph_extraction(currentBar=0.0):
 
 
 def get_weight_for_graph(poids):
-	global weightGraphBaseline
-	global weightGraphBaselineSet
+    # Small delay after HX711 tare to avoid displaying stale values.
+    if weightTareTimestamp > 0:
+        if (time.time() - weightTareTimestamp) < WEIGHT_TARE_SETTLE_TIME:
+            return 0.0
 
-	#During tare pending, force graph weight to zero.
-	#This avoids drawing the first blue bars with the pre-tare cup weight.
-	if weightTareTimestamp > 0:
-		if (time.time() - weightTareTimestamp) < WEIGHT_TARE_SETTLE_TIME:
-			return 0.0
+    if poids < 0:
+        poids = 0.0
 
-	#Safety against negative HX711 values.
-	if poids < 0:
-		poids = 0.0
-
-	#First value after tare delay:
-	#if it is still high, it is probably a pre-tare or delayed value.
-	#Use it as a temporary visual baseline.
-	if weightGraphBaselineSet == 0:
-		if poids > WEIGHT_TARE_BASELINE_THRESHOLD:
-			weightGraphBaseline = poids
-		else:
-			weightGraphBaseline = 0.0
-
-		weightGraphBaselineSet = 1
-
-	#If baseline was high and HX711 tare finally catches up,
-	#reset baseline down to the new lower value.
-	if weightGraphBaseline > 0:
-		if poids < (weightGraphBaseline - WEIGHT_TARE_BASELINE_DROP):
-			weightGraphBaseline = poids
-
-	poidsGraph = poids - weightGraphBaseline
-
-	if poidsGraph < 0:
-		poidsGraph = 0.0
-
-	return poidsGraph
+    return poids
 
 
 def draw_weight_total_bar(x, currentWeight):
