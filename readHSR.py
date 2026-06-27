@@ -4,9 +4,8 @@ import time
 import threading
 import sys
 
-device_folder = '/sys/kernel/hcsr04/range'
+device_folder = '/sys/kernel/hcsr04/range' 
 
- 
 def read_range_raw():
         device_file = device_folder
 	try:

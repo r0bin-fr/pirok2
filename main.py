@@ -24,6 +24,7 @@ import multithreadPID
 import multithreadPIDPump
 import multithreadHX711
 import multithreadBTPoids
+import multithreadBTDongles
 
 #Temperature file backup
 TEMPBACKUP = '/home/pi/pirok2/settings.txt'
@@ -86,6 +87,8 @@ task4 = multithreadHum.TaskPrintHum(3,dhtData)
 task5 = multithreadRange.TaskPrintRange(4,hsrData)
 task8 = multithreadBTPoids.TaskPrintWeight2(7,poidsBTData)
 task9 = multithreadADC.TaskPrintBar(8,barData)
+task10 = multithreadBTDongles.TaskSendBTDongles(10, barData, maximT2)
+
 #**** PID setup: *****
 #maximT2 is the group temperature (for boost algorithm), maximT1 is the boiler temp sensor, default target value = 115C
 temptarget=115
@@ -107,6 +110,7 @@ def quitApplicationNicely():
 	task5.stop()
 	#task8.stop()
 	task9.stop()
+	task10.stop()
 	time.sleep(0.1)
 #	print "now join task 1"
 #	task1.join()
@@ -663,6 +667,7 @@ task5.start()
 task9.start()
 task6PID.start()
 task7PID.start()
+task10.start()
 
 #pump data
 isPumpRunning = 0
